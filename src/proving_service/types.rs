@@ -1,4 +1,3 @@
-
 pub struct ProveRequest {
     pub circuit_version: String,
     pub input: String,
