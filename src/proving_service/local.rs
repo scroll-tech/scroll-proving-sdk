@@ -19,6 +19,10 @@ impl ProvingServiceExtension for LocalProvingService {
         todo!()
     }
 
+    fn total_workers(&self) -> usize {
+        1
+    }
+
     fn idle_workers(&self) -> usize {
         todo!()
     }
