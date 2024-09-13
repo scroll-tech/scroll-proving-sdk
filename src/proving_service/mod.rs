@@ -9,6 +9,7 @@ pub use types::*;
 pub trait ProvingServiceExtension {
     fn prove(&self, req: ProveRequest) -> ProveResponse;
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse;
+    fn idle_workers(&self) -> usize;
 }
 
 struct ProvingService {

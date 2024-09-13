@@ -24,4 +24,8 @@ impl ProvingServiceExtension for SnarkifyProvingService {
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse {
         todo!()
     }
+
+    fn idle_workers(&self) -> usize {
+        todo!()
+    }
 }
