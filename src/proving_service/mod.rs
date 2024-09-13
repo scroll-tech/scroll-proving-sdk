@@ -50,4 +50,18 @@ impl ProvingService {
 
         proving_service
     }
+
+    fn start_prove(&mut self) -> anyhow::Result<()> {
+        // sort extensions by idle workers
+        let mut extensions: Vec<&mut Box<dyn ProvingServiceExtension>> =
+            self.extensions.iter_mut().collect();
+        extensions.sort_by_key(|e| e.idle_workers());
+        extensions.reverse();
+        if extensions.first().unwrap().idle_workers() <= 0 {
+            return Err(anyhow::Error::msg("No idle workers"));
+        }
+
+        // e.prove(ProveRequest {});
+        Ok(())
+    }
 }
