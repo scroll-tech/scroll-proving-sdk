@@ -1,11 +1,12 @@
 use super::types::*;
 use super::ProvingServiceExtension;
+use crate::config::DbConfig;
 use crate::config::LocalPoverConfig;
 
 pub struct LocalProvingService {}
 
 impl LocalProvingService {
-    pub fn new(cfg: LocalPoverConfig) -> Self {
+    pub fn new(cfg: LocalPoverConfig, db_cfg: DbConfig) -> Self {
         Self {}
     }
 }

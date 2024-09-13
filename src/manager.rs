@@ -12,7 +12,7 @@ struct Manager {
 
 impl Manager {
     pub fn new(cfg: Config) -> Manager {
-        let ps = ProvingService::new(cfg.proving_service);
+        let ps = ProvingService::new(cfg.proving_service, cfg.db);
         let cc = CoordinatorClient::new(cfg.coordinator);
         Manager {
             proving_service: ps,

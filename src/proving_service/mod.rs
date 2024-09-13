@@ -3,7 +3,7 @@ mod sindri;
 mod snarkify;
 mod types;
 
-use crate::config::ProvingServiceConfig;
+use crate::config::{DbConfig, ProvingServiceConfig};
 pub use types::*;
 
 pub trait ProvingServiceExtension {
@@ -19,7 +19,7 @@ pub struct ProvingService {
 }
 
 impl ProvingService {
-    pub fn new(cfg: ProvingServiceConfig) -> Self {
+    pub fn new(cfg: ProvingServiceConfig, db_cfg: DbConfig) -> Self {
         if cfg.local.is_none() && cfg.sindri.is_none() && cfg.snarkify.is_none() {
             panic!("No proving service is configured");
         }
@@ -31,7 +31,7 @@ impl ProvingService {
 
         if cfg.local.is_some() {
             let local_cfg = cfg.local.unwrap();
-            let local_proving_service = local::LocalProvingService::new(local_cfg);
+            let local_proving_service = local::LocalProvingService::new(local_cfg, db_cfg);
             proving_service
                 .extensions
                 .push(Box::new(local_proving_service));
@@ -67,7 +67,7 @@ impl ProvingService {
         extensions.sort_by_key(|e| e.idle_workers());
         extensions.reverse();
         if extensions.first().unwrap().idle_workers() <= 0 {
-            return Err(anyhow::Error::msg("No idle workers"));
+            anyhow::bail!("No idle workers");
         }
 
         // TODO:
