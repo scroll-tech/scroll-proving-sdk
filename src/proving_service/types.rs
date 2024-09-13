@@ -6,6 +6,7 @@ pub struct ProveRequest {
 pub struct ProveResponse {
     pub task_id: String,
     pub circuit_version: String,
+    pub circuit_type: CircuitType,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
@@ -24,6 +25,7 @@ pub struct GetTaskRequest {
 pub struct GetTaskResponse {
     pub task_id: String,
     pub circuit_version: String,
+    pub circuit_type: CircuitType,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
@@ -40,4 +42,10 @@ pub enum TaskStatus {
     Proving,
     Success,
     Failed,
+}
+
+pub enum CircuitType {
+    Chunk,
+    Batch,
+    Bundle,
 }
