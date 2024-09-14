@@ -1,3 +1,5 @@
+use std::path;
+
 use crate::proving_service::CircuitType;
 
 #[derive(Clone)]
@@ -45,4 +47,7 @@ pub struct SindriConfig {
 #[derive(Clone)]
 pub struct LocalPoverConfig {
     pub circuit_type: CircuitType,
+    // TODO:
+    // params path
+    // assets path
 }

@@ -15,6 +15,7 @@ pub trait ProvingServiceExtension {
     fn idle_workers(&self) -> usize;
 }
 
+#[derive(Default)]
 pub struct ProvingService {
     extensions: Vec<Box<dyn ProvingServiceExtension>>,
     total_workers: usize, // sum of total workers of all extensions
@@ -38,11 +39,7 @@ impl ProvingService {
             }
         }
 
-        let mut proving_service = ProvingService {
-            extensions: Vec::new(),
-            total_workers: 0,
-            supported_circuit_types: HashSet::new(),
-        };
+        let mut proving_service = ProvingService::default();
 
         if cfg.local.is_some() {
             let local_cfg = cfg.local.unwrap();
@@ -100,7 +97,7 @@ impl ProvingService {
         proving_service
     }
 
-    fn start_prove(&mut self) -> anyhow::Result<()> {
+    fn start_prove(&mut self, circuit_type: CircuitType, input: &Vec<u8>) -> anyhow::Result<()> {
         // sort extensions by idle workers
         let mut extensions: Vec<&mut Box<dyn ProvingServiceExtension>> =
             self.extensions.iter_mut().collect();
@@ -111,7 +108,9 @@ impl ProvingService {
         }
 
         // TODO:
+        // check supported circuit_type for the extension
         // e.prove(ProveRequest {});
-        Ok(())
+
+        todo!()
     }
 }
