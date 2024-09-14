@@ -44,6 +44,7 @@ pub enum TaskStatus {
     Failed,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum CircuitType {
     Chunk,
     Batch,
