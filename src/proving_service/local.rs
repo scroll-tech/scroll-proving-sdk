@@ -24,12 +24,4 @@ impl ProvingServiceExtension for LocalProvingService {
         // read the related info from db
         todo!()
     }
-
-    fn total_workers(&self) -> usize {
-        1
-    }
-
-    fn idle_workers(&self) -> usize {
-        todo!()
-    }
 }

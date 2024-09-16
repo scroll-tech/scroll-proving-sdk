@@ -25,6 +25,8 @@ pub struct L2GethConfig {
 
 #[derive(Clone)]
 pub struct ProvingServiceConfig {
+    pub circuit_type: CircuitType,
+    pub n_workers: usize,
     pub snarkify: Option<SnarkifyConfig>,
     pub sindri: Option<SindriConfig>,
     pub local: Option<LocalPoverConfig>,
@@ -34,19 +36,16 @@ pub struct ProvingServiceConfig {
 pub struct SnarkifyConfig {
     pub endpoint: String,
     pub api_key: String,
-    pub n_workers: usize,
 }
 
 #[derive(Clone)]
 pub struct SindriConfig {
     pub endpoint: String,
     pub api_key: String,
-    pub n_workers: usize,
 }
 
 #[derive(Clone)]
 pub struct LocalPoverConfig {
-    pub circuit_type: CircuitType,
     // TODO:
     // params path
     // assets path

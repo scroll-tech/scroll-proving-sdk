@@ -11,14 +11,11 @@ pub use types::*;
 pub trait ProvingServiceExtension {
     fn prove(&self, req: ProveRequest) -> ProveResponse;
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse;
-    fn total_workers(&self) -> usize;
-    fn idle_workers(&self) -> usize;
 }
 
 #[derive(Default)]
 pub struct ProvingService {
     extensions: Vec<Box<dyn ProvingServiceExtension>>,
-    total_workers: usize, // sum of total workers of all extensions
     supported_circuit_types: HashSet<CircuitType>,
 }
 
@@ -47,7 +44,6 @@ impl ProvingService {
             proving_service
                 .extensions
                 .push(Box::new(local_proving_service));
-            proving_service.total_workers += 1;
             proving_service
                 .supported_circuit_types
                 .insert(local_cfg.circuit_type);
@@ -59,7 +55,6 @@ impl ProvingService {
             proving_service
                 .extensions
                 .push(Box::new(sindri_proving_service));
-            proving_service.total_workers += sindri_cfg.n_workers;
             proving_service
                 .supported_circuit_types
                 .insert(CircuitType::Batch);
@@ -80,7 +75,6 @@ impl ProvingService {
             proving_service
                 .extensions
                 .push(Box::new(snarkify_proving_service));
-            proving_service.total_workers += snarkify_cfg.n_workers;
             proving_service
                 .supported_circuit_types
                 .insert(CircuitType::Batch);
@@ -98,18 +92,9 @@ impl ProvingService {
     }
 
     fn start_prove(&mut self, circuit_type: CircuitType, input: &Vec<u8>) -> anyhow::Result<()> {
-        // sort extensions by idle workers
-        let mut extensions: Vec<&mut Box<dyn ProvingServiceExtension>> =
-            self.extensions.iter_mut().collect();
-        extensions.sort_by_key(|e| e.idle_workers());
-        extensions.reverse();
-        if extensions.first().unwrap().idle_workers() <= 0 {
-            anyhow::bail!("No idle workers");
-        }
-
         // TODO:
         // check supported circuit_type for the extension
-        // e.prove(ProveRequest {});
+        // e.extension.prove(ProveRequest {});
 
         todo!()
     }
