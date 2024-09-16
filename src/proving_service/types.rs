@@ -1,12 +1,13 @@
 pub struct ProveRequest {
+    pub circuit_type: CircuitType,
     pub circuit_version: String,
     pub input: String,
 }
 
 pub struct ProveResponse {
     pub task_id: String,
-    pub circuit_version: String,
     pub circuit_type: CircuitType,
+    pub circuit_version: String,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
