@@ -1,6 +1,6 @@
 use std::path;
 
-use crate::proving_service::CircuitType;
+use crate::prover::CircuitType;
 
 #[derive(Clone)]
 pub struct Config {

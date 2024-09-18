@@ -1,3 +1,8 @@
+trait ProvingService {
+    fn prove(&self, req: ProveRequest) -> ProveResponse;
+    fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse;
+}
+
 pub struct ProveRequest {
     pub circuit_type: CircuitType,
     pub circuit_version: String,
