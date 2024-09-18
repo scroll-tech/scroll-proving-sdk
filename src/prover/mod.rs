@@ -1,7 +1,8 @@
 pub mod builder;
 pub mod proving_service;
+pub mod worker;
 
-pub use {builder::ProverBuilder, proving_service::ProvingService};
+pub use {builder::ProverBuilder, proving_service::ProvingService, worker::Worker};
 
 use crate::{coordinator_handler::CoordinatorClient, tracing_handler::L2gethClient};
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,8 @@ pub struct Prover {
     coordinator_client: CoordinatorClient,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService>,
+    workers: Vec<Worker>,
     // TODO:
-    // keys: HashMap<string, Key>,
     // db: Db,
 }
 

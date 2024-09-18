@@ -5,7 +5,7 @@ use crate::{
     tracing_handler::L2gethClient,
 };
 
-use super::CircuitType;
+use super::{CircuitType, Worker};
 
 pub struct ProverBuilder {
     cfg: Config,
@@ -44,10 +44,15 @@ impl ProverBuilder {
         };
         let proving_service = self.proving_service.unwrap();
 
+        let workers = (0..self.cfg.prover.n_workers)
+            .map(|id| Worker::new(id))
+            .collect::<Vec<_>>();
+
         Ok(Prover {
-            coordinator_client: coordinator_client,
-            l2geth_client: l2geth_client,
-            proving_service: proving_service,
+            coordinator_client,
+            l2geth_client,
+            proving_service,
+            workers,
         })
     }
 }
