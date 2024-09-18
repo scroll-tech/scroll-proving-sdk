@@ -49,6 +49,7 @@ impl ProverBuilder {
             .collect::<Vec<_>>();
 
         Ok(Prover {
+            circuit_type: self.cfg.prover.circuit_type,
             coordinator_client,
             l2geth_client,
             proving_service,

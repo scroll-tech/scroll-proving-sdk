@@ -15,6 +15,7 @@ pub enum CircuitType {
 }
 
 pub struct Prover {
+    circuit_type: CircuitType,
     coordinator_client: CoordinatorClient,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService>,
@@ -25,6 +26,22 @@ pub struct Prover {
 
 impl Prover {
     pub fn run(&self) -> anyhow::Result<()> {
+        match self.circuit_type {
+            CircuitType::Chunk => self.run_chunk(),
+            CircuitType::Batch => self.run_batch(),
+            CircuitType::Bundle => self.run_bundle(),
+        }
+    }
+
+    pub fn run_chunk(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    pub fn run_batch(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    pub fn run_bundle(&self) -> anyhow::Result<()> {
         todo!()
     }
 }
