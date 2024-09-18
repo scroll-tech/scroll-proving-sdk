@@ -13,6 +13,11 @@ impl ProverBuilder {
         }
     }
 
+    pub fn with_proving_service(mut self, proving_service: Box<dyn ProvingService>) -> Self {
+        self.proving_service = Some(proving_service);
+        self
+    }
+
     pub fn build(&self) -> Prover {
         todo!()
     }
