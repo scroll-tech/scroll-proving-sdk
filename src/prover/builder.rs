@@ -1,8 +1,11 @@
 use crate::{
     config::Config,
     coordinator_handler::CoordinatorClient,
-    prover::{Prover, ProvingService}, tracing_handler::L2gethClient,
+    prover::{Prover, ProvingService},
+    tracing_handler::L2gethClient,
 };
+
+use super::CircuitType;
 
 struct ProverBuilder {
     cfg: Config,
@@ -22,7 +25,14 @@ impl ProverBuilder {
         self
     }
 
-    pub fn build(self) -> Prover {
+    pub fn build(self) -> anyhow::Result<Prover> {
+        if self.proving_service.is_none() {
+            anyhow::bail!("proving_service is not provided");
+        }
+        if self.cfg.prover.circuit_type == CircuitType::Chunk && self.cfg.l2geth.is_none() {
+            anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
+        }
+
         let coordinator_client = CoordinatorClient::new(self.cfg.coordinator.clone());
         let l2geth_client = match self.cfg.l2geth {
             Some(l2geth) => Some(L2gethClient::new(l2geth)),
@@ -30,11 +40,11 @@ impl ProverBuilder {
         };
         let proving_service = self.proving_service.unwrap();
 
-        Prover {
+        Ok(Prover {
             coordinator_client: coordinator_client,
             l2geth_client: l2geth_client,
             proving_service: proving_service,
-        }
+        })
 
         // todo!()
     }

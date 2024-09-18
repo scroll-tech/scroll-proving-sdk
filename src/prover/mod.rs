@@ -16,7 +16,6 @@ struct Prover {
     coordinator_client: CoordinatorClient,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService>,
-
     // TODO:
     // keys: HashMap<string, Key>,
     // db: Db,
