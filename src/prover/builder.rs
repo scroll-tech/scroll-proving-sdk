@@ -29,6 +29,10 @@ impl ProverBuilder {
         if self.proving_service.is_none() {
             anyhow::bail!("proving_service is not provided");
         }
+        if self.proving_service.as_ref().unwrap().is_local() && self.cfg.prover.n_workers > 1 {
+            anyhow::bail!("cannot use multiple workers with local proving service");
+        }
+
         if self.cfg.prover.circuit_type == CircuitType::Chunk && self.cfg.l2geth.is_none() {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
@@ -45,7 +49,5 @@ impl ProverBuilder {
             l2geth_client: l2geth_client,
             proving_service: proving_service,
         })
-
-        // todo!()
     }
 }

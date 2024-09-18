@@ -15,6 +15,9 @@ impl ProvingService for LocalProver {
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse {
         todo!()
     }
+    fn is_local(&self) -> bool {
+        true
+    }
 }
 
 impl LocalProver {

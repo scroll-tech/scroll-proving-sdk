@@ -18,6 +18,9 @@ impl ProvingService for CloudProver {
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse {
         todo!()
     }
+    fn is_local(&self) -> bool {
+        false
+    }
 }
 
 impl CloudProver {
