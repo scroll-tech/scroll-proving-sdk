@@ -7,7 +7,7 @@ use crate::{
 
 use super::CircuitType;
 
-struct ProverBuilder {
+pub struct ProverBuilder {
     cfg: Config,
     proving_service: Option<Box<dyn ProvingService>>,
 }

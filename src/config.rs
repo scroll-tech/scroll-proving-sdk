@@ -1,6 +1,9 @@
 use crate::prover::CircuitType;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::fs::File;
 
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub db: DbConfig,
     pub coordinator: CoordinatorConfig,
@@ -8,36 +11,50 @@ pub struct Config {
     pub prover: ProverConfig,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
 
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoordinatorConfig {
     pub base_url: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct L2GethConfig {
     pub endpoint: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProverConfig {
     pub circuit_type: CircuitType,
     pub n_workers: usize,
-    pub cloud: Option<CloudPoverConfig>,
-    pub local: Option<LocalPoverConfig>,
+    pub cloud: Option<CloudProverConfig>,
+    pub local: Option<LocalProverConfig>,
 }
 
-#[derive(Clone)]
-pub struct CloudPoverConfig {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CloudProverConfig {
     pub endpoint: String,
     pub api_key: String,
 }
 
-#[derive(Clone)]
-pub struct LocalPoverConfig {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocalProverConfig {
     // TODO:
     // params path
     // assets path
+}
+
+impl Config {
+    pub fn from_reader<R>(reader: R) -> anyhow::Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub fn from_file(file_name: String) -> anyhow::Result<Self> {
+        let file = File::open(file_name)?;
+        Config::from_reader(&file)
+    }
 }
