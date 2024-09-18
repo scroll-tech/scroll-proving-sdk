@@ -1,5 +1,4 @@
 pub mod builder;
-pub mod common;
 pub mod proving_service;
 
 pub use proving_service::ProvingService;
@@ -16,6 +15,8 @@ pub enum CircuitType {
 struct Prover {
     coordinator_client: CoordinatorClient,
     l2geth_client: Option<L2gethClient>,
+    proving_service: Box<dyn ProvingService>,
+
     // TODO:
     // keys: HashMap<string, Key>,
     // db: Db,

@@ -1,4 +1,8 @@
-use crate::{config::Config, prover::Prover, prover::ProvingService};
+use crate::{
+    config::Config,
+    coordinator_handler::CoordinatorClient,
+    prover::{Prover, ProvingService}, tracing_handler::L2gethClient,
+};
 
 struct ProverBuilder {
     cfg: Config,
@@ -18,7 +22,20 @@ impl ProverBuilder {
         self
     }
 
-    pub fn build(&self) -> Prover {
-        todo!()
+    pub fn build(self) -> Prover {
+        let coordinator_client = CoordinatorClient::new(self.cfg.coordinator.clone());
+        let l2geth_client = match self.cfg.l2geth {
+            Some(l2geth) => Some(L2gethClient::new(l2geth)),
+            None => None,
+        };
+        let proving_service = self.proving_service.unwrap();
+
+        Prover {
+            coordinator_client: coordinator_client,
+            l2geth_client: l2geth_client,
+            proving_service: proving_service,
+        }
+
+        // todo!()
     }
 }
