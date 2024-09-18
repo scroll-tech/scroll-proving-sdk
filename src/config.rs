@@ -1,5 +1,3 @@
-use std::path;
-
 use crate::prover::CircuitType;
 
 #[derive(Clone)]
@@ -7,7 +5,7 @@ pub struct Config {
     pub db: DbConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
-    pub proving_service: ProvingServiceConfig,
+    pub prover: ProverConfig,
 }
 
 #[derive(Clone)]
@@ -24,22 +22,15 @@ pub struct L2GethConfig {
 }
 
 #[derive(Clone)]
-pub struct ProvingServiceConfig {
+pub struct ProverConfig {
     pub circuit_type: CircuitType,
     pub n_workers: usize,
-    pub snarkify: Option<SnarkifyConfig>,
-    pub sindri: Option<SindriConfig>,
+    pub cloud: Option<CloudPoverConfig>,
     pub local: Option<LocalPoverConfig>,
 }
 
 #[derive(Clone)]
-pub struct SnarkifyConfig {
-    pub endpoint: String,
-    pub api_key: String,
-}
-
-#[derive(Clone)]
-pub struct SindriConfig {
+pub struct CloudPoverConfig {
     pub endpoint: String,
     pub api_key: String,
 }

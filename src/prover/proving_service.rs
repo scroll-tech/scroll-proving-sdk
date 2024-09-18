@@ -1,4 +1,6 @@
-trait ProvingService {
+use super::CircuitType;
+
+pub trait ProvingService {
     fn prove(&self, req: ProveRequest) -> ProveResponse;
     fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse;
 }
@@ -48,11 +50,4 @@ pub enum TaskStatus {
     Proving,
     Success,
     Failed,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum CircuitType {
-    Chunk,
-    Batch,
-    Bundle,
 }
