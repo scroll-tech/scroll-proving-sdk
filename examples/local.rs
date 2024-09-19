@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
     prover::{
@@ -36,5 +38,5 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(local_prover))
         .build()?;
 
-    prover.run()
+    Arc::new(prover).run()
 }

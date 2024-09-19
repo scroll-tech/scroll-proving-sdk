@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
     prover::{
@@ -42,5 +44,5 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(cloud_prover))
         .build()?;
 
-    prover.run()
+    Arc::new(prover).run()
 }
