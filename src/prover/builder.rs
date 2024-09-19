@@ -42,7 +42,7 @@ impl ProverBuilder {
 
         let coordinator_client = CoordinatorClient::new(self.cfg.coordinator.clone());
         let l2geth_client = match self.cfg.l2geth {
-            Some(l2geth) => Some(L2gethClient::new(l2geth)),
+            Some(l2geth) => Some(L2gethClient::new(l2geth)?),
             None => None,
         };
         let proving_service = self.proving_service.unwrap();
