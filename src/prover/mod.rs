@@ -80,6 +80,12 @@ impl Prover {
     }
 
     fn build_proving_input(&self, task: CoordinatorTask) -> ProveRequest {
+        match self.circuit_type {
+            CircuitType::Chunk => {}
+            CircuitType::Batch => {}
+            CircuitType::Bundle => {}
+        }
+
         todo!()
     }
 }
