@@ -1,3 +1,4 @@
+use super::CoordinatorTask;
 use crate::config::CoordinatorConfig;
 
 pub struct CoordinatorClient {
@@ -9,5 +10,9 @@ impl CoordinatorClient {
         Self {
             base_url: cfg.base_url,
         }
+    }
+
+    pub fn get_task(&self) -> Option<CoordinatorTask> {
+        todo!()
     }
 }

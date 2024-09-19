@@ -5,11 +5,11 @@ use crate::{
     tracing_handler::L2gethClient,
 };
 
-use super::{CircuitType, Worker};
+use super::CircuitType;
 
 pub struct ProverBuilder {
     cfg: Config,
-    proving_service: Option<Box<dyn ProvingService>>,
+    proving_service: Option<Box<dyn ProvingService + Send + Sync>>,
 }
 
 impl ProverBuilder {
@@ -20,7 +20,10 @@ impl ProverBuilder {
         }
     }
 
-    pub fn with_proving_service(mut self, proving_service: Box<dyn ProvingService>) -> Self {
+    pub fn with_proving_service(
+        mut self,
+        proving_service: Box<dyn ProvingService + Send + Sync>,
+    ) -> Self {
         self.proving_service = Some(proving_service);
         self
     }
@@ -44,16 +47,12 @@ impl ProverBuilder {
         };
         let proving_service = self.proving_service.unwrap();
 
-        let workers = (0..self.cfg.prover.n_workers)
-            .map(|id| Worker::new(id))
-            .collect::<Vec<_>>();
-
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
             coordinator_client,
             l2geth_client,
             proving_service,
-            workers,
+            n_workers: self.cfg.prover.n_workers,
         })
     }
 }

@@ -1,8 +1,8 @@
 use super::CircuitType;
 
 pub trait ProvingService {
-    fn prove(&self, req: ProveRequest) -> ProveResponse;
-    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse;
+    fn prove(&self, req: ProveRequest) -> ProveResponse; // TODO: Result<ProveResponse, Error>
+    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse; // TODO: Result<GetTaskResponse, Error>
     fn is_local(&self) -> bool;
 }
 
@@ -46,6 +46,7 @@ pub struct GetTaskResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum TaskStatus {
     Queued,
     Proving,
