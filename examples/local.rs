@@ -12,7 +12,7 @@ impl ProvingService for LocalProver {
     fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse {
+    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse {
         todo!()
     }
     fn is_local(&self) -> bool {

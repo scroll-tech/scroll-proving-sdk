@@ -2,7 +2,7 @@ use super::CircuitType;
 
 pub trait ProvingService {
     fn prove(&self, req: ProveRequest) -> ProveResponse;
-    fn get_task(&self, req: GetTaskRequest) -> GetTaskResponse;
+    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse;
     fn is_local(&self) -> bool;
 }
 
