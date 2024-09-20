@@ -12,18 +12,19 @@ use rand;
 use rand::RngCore;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use tiny_keccak::{Hasher, Keccak};
 
 const DEFAULT_KEY_SIZE: usize = 32usize;
 
-fn read_key_from_disk(key_path: &str) -> anyhow::Result<Vec<u8>> {
+fn read_key_from_disk(key_path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     let mut file = File::open(key_path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     Ok(hex::decode(content)?)
 }
 
-fn gen_key_save_to_disk(key_path: &str) -> anyhow::Result<Vec<u8>> {
+fn gen_key_save_to_disk(key_path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     // Generate a random private key.
     let mut secret = vec![0u8; DEFAULT_KEY_SIZE];
     let mut rng = rand::thread_rng();
@@ -43,7 +44,7 @@ pub struct KeySigner {
 }
 
 impl KeySigner {
-    pub fn new(key_path: &str) -> anyhow::Result<Self> {
+    pub fn new(key_path: &PathBuf) -> anyhow::Result<Self> {
         let secret = match read_key_from_disk(key_path) {
             Ok(secret) => secret,
             Err(_) => gen_key_save_to_disk(key_path)?,
