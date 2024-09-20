@@ -1,6 +1,6 @@
 use crate::{
     config::Config,
-    coordinator_handler::CoordinatorClient,
+    coordinator_handler::{CoordinatorClient, KeySigner},
     prover::{Prover, ProvingService},
     tracing_handler::L2gethClient,
 };
@@ -46,13 +46,22 @@ impl ProverBuilder {
             None => None,
         };
         let proving_service = self.proving_service.unwrap();
+        let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
+            .map(|i| {
+                let key_path = format!("{}{}", self.cfg.keys_dir, i);
+                KeySigner::new(&key_path)
+            })
+            .collect();
+        let key_signers = key_signers?;
 
         Ok(Prover {
+            prover_name_prefix: self.cfg.prover_name_prefix.clone(),
             circuit_type: self.cfg.prover.circuit_type,
             coordinator_client,
             l2geth_client,
             proving_service,
             n_workers: self.cfg.prover.n_workers,
+            key_signers,
         })
     }
 }
