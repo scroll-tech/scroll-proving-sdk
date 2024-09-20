@@ -12,3 +12,4 @@ ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branc
 rand = "0.8.5"
 serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
+tiny-keccak = { version = "2.0.0", features = ["sha3", "keccak"] }
