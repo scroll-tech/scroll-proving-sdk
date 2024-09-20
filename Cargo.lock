@@ -1579,8 +1579,10 @@ dependencies = [
  "ethers-core",
  "ethers-providers",
  "log",
+ "rand",
  "serde",
  "serde_json",
+ "tiny-keccak",
 ]
 
 [[package]]

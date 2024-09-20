@@ -3,7 +3,7 @@ pub mod proving_service;
 pub use {builder::ProverBuilder, proving_service::ProvingService};
 
 use crate::{
-    coordinator_handler::{CoordinatorClient, CoordinatorTask},
+    coordinator_handler::{CoordinatorClient, CoordinatorTask, KeySigner},
     tracing_handler::L2gethClient,
 };
 use anyhow::Ok;
@@ -21,29 +21,34 @@ pub enum CircuitType {
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
+    prover_name_prefix: String,
     circuit_type: CircuitType,
     coordinator_client: CoordinatorClient,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
+    key_signers: Vec<KeySigner>,
     // TODO:
     // db: Db,
 }
 
 impl Prover {
     pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
-        for _ in 0..self.n_workers {
+        for i in 0..self.n_workers {
             let self_clone = std::sync::Arc::clone(&self);
             // spin up a thread
             thread::spawn(move || {
-                self_clone.working_loop();
+                self_clone.working_loop(i);
             });
         }
 
         Ok(())
     }
 
-    fn working_loop(&self) {
+    fn working_loop(&self, i: usize) {
+        let worker_name = format!("{}{}", self.prover_name_prefix, i);
+        let key_signer = self.key_signers[i].clone();
+
         loop {
             let coordinator_task = self.coordinator_client.get_task();
 

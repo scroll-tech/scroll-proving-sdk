@@ -5,6 +5,8 @@ use std::fs::File;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
+    pub prover_name_prefix: String,
+    pub keys_dir: String,
     pub db: DbConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
