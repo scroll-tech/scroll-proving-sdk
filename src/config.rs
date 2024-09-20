@@ -14,7 +14,9 @@ pub struct Config {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DbConfig {}
+pub struct DbConfig {
+    pub path: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoordinatorConfig {

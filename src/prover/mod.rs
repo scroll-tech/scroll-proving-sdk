@@ -9,6 +9,7 @@ use crate::{
 use anyhow::Ok;
 use proving_service::{GetTaskRequest, ProveRequest, TaskStatus};
 use serde::{Deserialize, Serialize};
+use sled::Db;
 use std::thread;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -28,8 +29,7 @@ pub struct Prover {
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
     key_signers: Vec<KeySigner>,
-    // TODO:
-    // db: Db,
+    db: Db,
 }
 
 impl Prover {

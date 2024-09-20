@@ -53,6 +53,7 @@ impl ProverBuilder {
             })
             .collect();
         let key_signers = key_signers?;
+        let db = sled::open(&self.cfg.db.path)?;
 
         Ok(Prover {
             prover_name_prefix: self.cfg.prover_name_prefix.clone(),
@@ -62,6 +63,7 @@ impl ProverBuilder {
             proving_service,
             n_workers: self.cfg.prover.n_workers,
             key_signers,
+            db,
         })
     }
 }
