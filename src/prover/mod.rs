@@ -1,39 +1,32 @@
 pub mod builder;
 pub mod proving_service;
-pub use {builder::ProverBuilder, proving_service::ProvingService};
+pub mod types;
+pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
-    coordinator_handler::{CoordinatorClient, CoordinatorTask, KeySigner},
+    coordinator_handler::{CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData},
     tracing_handler::L2gethClient,
 };
-use anyhow::Ok;
-use proving_service::{GetTaskRequest, ProveRequest, TaskStatus};
-use serde::{Deserialize, Serialize};
+use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::thread;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub enum CircuitType {
-    Chunk,
-    Batch,
-    Bundle,
-}
 
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
-    prover_name_prefix: String,
     circuit_type: CircuitType,
-    coordinator_client: CoordinatorClient,
+    coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
-    key_signers: Vec<KeySigner>,
     // TODO:
     // db: Db,
 }
 
 impl Prover {
     pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
+        assert!(self.n_workers == self.coordinator_clients.len());
+
         for i in 0..self.n_workers {
             let self_clone = std::sync::Arc::clone(&self);
             // spin up a thread
@@ -46,25 +39,41 @@ impl Prover {
     }
 
     fn working_loop(&self, i: usize) {
-        let worker_name = format!("{}{}", self.prover_name_prefix, i);
-        let key_signer = self.key_signers[i].clone();
-
         loop {
-            let coordinator_task = self.coordinator_client.get_task();
+            let get_task_request = GetTaskRequest {
+                task_types: vec![self.circuit_type],
+                prover_height: None, // TODO: prover_height
+            };
+            let coordinator_task = self.coordinator_clients[i].get_task(&get_task_request);
 
-            if coordinator_task.is_none() {
+            if let Err(e) = coordinator_task {
+                log::error!("failed to get task: {:?}", e);
+                thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                continue;
+            } else if coordinator_task.as_ref().unwrap().errcode != ErrorCode::Success {
+                log::error!(
+                    "failed to get task, errcode: {:?}, errmsg: {:?}",
+                    coordinator_task.as_ref().unwrap().errcode,
+                    coordinator_task.as_ref().unwrap().errmsg
+                );
+                thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                continue;
+            } else if coordinator_task.as_ref().unwrap().data.is_none() {
+                log::error!("no task is available");
                 thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                 continue;
             }
 
-            let proving_input = self.build_proving_input(coordinator_task.unwrap());
+            let coordinator_task = coordinator_task.unwrap().data.unwrap();
+
+            let proving_input = self.build_proving_input(coordinator_task);
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
                 // TODO: log error
                 continue; // retry
             } else {
                 loop {
-                    let task = self.proving_service.query_task(GetTaskRequest {
+                    let task = self.proving_service.query_task(QueryTaskRequest {
                         task_id: proving_task.task_id.clone(),
                     });
                     match task.status {
@@ -84,8 +93,11 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: CoordinatorTask) -> ProveRequest {
+    fn build_proving_input(&self, task: GetTaskResponseData) -> ProveRequest {
         match self.circuit_type {
+            CircuitType::Undefined => {
+                unreachable!();
+            }
             CircuitType::Chunk => {}
             CircuitType::Batch => {}
             CircuitType::Bundle => {}

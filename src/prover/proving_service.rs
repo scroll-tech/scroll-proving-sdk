@@ -2,7 +2,7 @@ use super::CircuitType;
 
 pub trait ProvingService {
     fn prove(&self, req: ProveRequest) -> ProveResponse; // TODO: Result<ProveResponse, Error>
-    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse; // TODO: Result<GetTaskResponse, Error>
+    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse; // TODO: Result<QueryTaskResponse, Error>
     fn is_local(&self) -> bool;
 }
 
@@ -27,11 +27,11 @@ pub struct ProveResponse {
     pub error: Option<String>,
 }
 
-pub struct GetTaskRequest {
+pub struct QueryTaskRequest {
     pub task_id: String,
 }
 
-pub struct GetTaskResponse {
+pub struct QueryTaskResponse {
     pub task_id: String,
     pub circuit_version: String,
     pub circuit_type: CircuitType,

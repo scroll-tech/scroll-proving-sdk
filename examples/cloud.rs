@@ -3,7 +3,7 @@ use std::sync::Arc;
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
     prover::{
-        proving_service::{GetTaskRequest, GetTaskResponse, ProveRequest, ProveResponse},
+        proving_service::{ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse},
         ProverBuilder, ProvingService,
     },
 };
@@ -17,7 +17,7 @@ impl ProvingService for CloudProver {
     fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn query_task(&self, req: GetTaskRequest) -> GetTaskResponse {
+    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
     fn is_local(&self) -> bool {
