@@ -1,5 +1,6 @@
 use super::error::ErrorCode;
 use crate::prover::CircuitType;
+use ethers_core::types::U64;
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -59,7 +60,7 @@ pub type ChallengeResponseData = LoginResponseData;
 #[derive(Default, Serialize, Deserialize)]
 pub struct GetTaskRequest {
     pub task_types: Vec<CircuitType>,
-    pub prover_height: Option<u64>,
+    pub prover_height: Option<U64>,
 }
 
 #[derive(Serialize, Deserialize)]

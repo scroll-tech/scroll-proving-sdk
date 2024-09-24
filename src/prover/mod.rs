@@ -10,7 +10,6 @@ use crate::{
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::thread;
 
-
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
@@ -26,6 +25,9 @@ pub struct Prover {
 impl Prover {
     pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
         assert!(self.n_workers == self.coordinator_clients.len());
+        if self.circuit_type == CircuitType::Chunk {
+            assert!(self.l2geth_client.is_some());
+        }
 
         for i in 0..self.n_workers {
             let self_clone = std::sync::Arc::clone(&self);
@@ -40,10 +42,7 @@ impl Prover {
 
     fn working_loop(&self, i: usize) {
         loop {
-            let get_task_request = GetTaskRequest {
-                task_types: vec![self.circuit_type],
-                prover_height: None, // TODO: prover_height
-            };
+            let get_task_request = self.build_get_task_request();
             let coordinator_task = self.coordinator_clients[i].get_task(&get_task_request);
 
             if let Err(e) = coordinator_task {
@@ -90,6 +89,20 @@ impl Prover {
                     }
                 }
             }
+        }
+    }
+
+    fn build_get_task_request(&self) -> GetTaskRequest {
+        let prover_height = self.l2geth_client.as_ref().and_then(|l2geth_client| {
+            l2geth_client
+                .block_number_sync()
+                .ok()
+                .and_then(|block_number| block_number.as_number())
+        });
+
+        GetTaskRequest {
+            task_types: vec![self.circuit_type],
+            prover_height,
         }
     }
 
