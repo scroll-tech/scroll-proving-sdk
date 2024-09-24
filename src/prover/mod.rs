@@ -68,7 +68,7 @@ impl Prover {
             let proving_input = self.build_proving_input(coordinator_task);
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
-                // TODO: log error
+                log::error!("failed to prove: {:?}", proving_task.error);
                 continue; // retry
             } else {
                 loop {
@@ -80,7 +80,7 @@ impl Prover {
                             // TODO: send back proof
                         }
                         TaskStatus::Failed => {
-                            // TODO: log error
+                            log::error!("task failed: {:?}", task.error.unwrap());
                             // TODO: send back error
                         }
                         _ => {
