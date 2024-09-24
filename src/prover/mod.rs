@@ -69,7 +69,7 @@ impl Prover {
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
                 log::error!("failed to prove: {:?}", proving_task.error);
-                continue; // retry
+                continue;
             } else {
                 loop {
                     let task = self.proving_service.query_task(QueryTaskRequest {
