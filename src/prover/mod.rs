@@ -40,6 +40,7 @@ impl Prover {
         Ok(())
     }
 
+    // TODO: print more prover_name
     fn working_loop(&self, i: usize) {
         loop {
             let get_task_request = self.build_get_task_request();
@@ -65,7 +66,14 @@ impl Prover {
 
             let coordinator_task = coordinator_task.unwrap().data.unwrap();
 
-            let proving_input = self.build_proving_input(coordinator_task);
+            let proving_input = match self.build_proving_input(coordinator_task) {
+                Ok(input) => input,
+                Err(e) => {
+                    log::error!("failed to build proving input: {:?}", e);
+                    continue;
+                }
+            };
+
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
                 log::error!("failed to prove: {:?}", proving_task.error);
@@ -84,6 +92,7 @@ impl Prover {
                             // TODO: send back error
                         }
                         _ => {
+                            // TODO: print more logs
                             thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                         }
                     }
@@ -106,8 +115,17 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: GetTaskResponseData) -> ProveRequest {
-        match self.circuit_type {
+    fn build_proving_input(&self, task: GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+        anyhow::ensure!(
+            task.task_type == self.circuit_type,
+            "task type mismatch. self: {:?}, task: {:?}, uuid: {:?}, coordinator_task_id: {:?}",
+            self.circuit_type,
+            task.task_type,
+            task.uuid,
+            task.task_id
+        );
+
+        match task.task_type {
             CircuitType::Undefined => {
                 unreachable!();
             }
