@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
-    prover_name: String,
+    pub prover_name: String,
     key_signer: KeySigner,
     api: Api,
     token: Mutex<Option<String>>,

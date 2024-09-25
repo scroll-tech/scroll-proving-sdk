@@ -34,7 +34,6 @@ impl Prover {
 
         for i in 0..self.n_workers {
             let self_clone = std::sync::Arc::clone(&self);
-            // spin up a thread
             thread::spawn(move || {
                 self_clone.working_loop(i);
             });
@@ -43,26 +42,31 @@ impl Prover {
         Ok(())
     }
 
-    // TODO: print more prover_name
     fn working_loop(&self, i: usize) {
         loop {
+            let coordinator_client = &self.coordinator_clients[i];
+            let prover_name = coordinator_client.prover_name.clone();
+
+            log::info!("{:?}: getting task from coordinator", prover_name);
+
             let get_task_request = self.build_get_task_request();
-            let coordinator_task = self.coordinator_clients[i].get_task(&get_task_request);
+            let coordinator_task = coordinator_client.get_task(&get_task_request);
 
             if let Err(e) = coordinator_task {
-                log::error!("failed to get task: {:?}", e);
+                log::error!("{:?}: failed to get task: {:?}", prover_name, e);
                 thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                 continue;
             } else if coordinator_task.as_ref().unwrap().errcode != ErrorCode::Success {
                 log::error!(
-                    "failed to get task, errcode: {:?}, errmsg: {:?}",
+                    "{:?}: failed to get task, errcode: {:?}, errmsg: {:?}",
+                    prover_name,
                     coordinator_task.as_ref().unwrap().errcode,
                     coordinator_task.as_ref().unwrap().errmsg
                 );
                 thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                 continue;
             } else if coordinator_task.as_ref().unwrap().data.is_none() {
-                log::error!("no task is available");
+                log::error!("{:?}: no task is available", prover_name);
                 thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                 continue;
             }
@@ -70,18 +74,33 @@ impl Prover {
             let coordinator_task = coordinator_task.unwrap().data.unwrap();
             let coordinator_task_uuid = coordinator_task.uuid.clone();
             let coordinator_task_id = coordinator_task.task_id.clone();
+            let task_type = coordinator_task.task_type;
 
             let proving_input = match self.build_proving_input(&coordinator_task) {
                 Ok(input) => input,
                 Err(e) => {
-                    log::error!("failed to build proving input: {:?}", e);
+                    log::error!(
+                        "{:?}: failed to build proving input. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
+                        prover_name,
+                        task_type,
+                        coordinator_task_uuid,
+                        coordinator_task_id,
+                        e,
+                    );
                     continue;
                 }
             };
 
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
-                log::error!("failed to prove: {:?}", proving_task.error);
+                log::error!(
+                    "{:?}: failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
+                    prover_name,
+                    task_type,
+                    coordinator_task_uuid,
+                    coordinator_task_id,
+                    proving_task.error,
+                );
                 continue;
             } else {
                 let proving_service_task_id = proving_task.task_id;
@@ -91,51 +110,113 @@ impl Prover {
                     });
                     match task.status {
                         TaskStatus::Queued => {
-                            log::info!("task queued");
+                            log::info!(
+                                "{:?}: task queued. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}", 
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
                             thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                         }
                         TaskStatus::Proving => {
-                            log::info!("task proving");
+                            log::info!(
+                                "{:?}: task proving. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
                             thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                         }
                         TaskStatus::Success => {
+                            log::info!(
+                                "{:?}: task proved successfully. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
                             let submit_proof_req = SubmitProofRequest {
-                                uuid: coordinator_task_uuid,
-                                task_id: coordinator_task_id,
+                                uuid: coordinator_task_uuid.clone(),
+                                task_id: coordinator_task_id.clone(),
                                 task_type: task.circuit_type,
                                 status: ProofStatus::Ok,
                                 proof: task.proof.unwrap(),
                                 failure_type: None,
                                 failure_msg: None,
                             };
-                            if let Ok(_) =
-                                self.coordinator_clients[i].submit_proof(&submit_proof_req)
-                            {
-                                log::info!("proof submitted");
-                            } else {
-                                log::error!("failed to submit proof");
-                            }
+                            match coordinator_client.submit_proof(&submit_proof_req) {
+                                Ok(_) => {
+                                    log::info!(
+                                        "{:?}: proof submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                    );
+                                }
+                                Err(e) => {
+                                    log::error!(
+                                        "{:?}: failed to submit proof. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, submission err: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                        e,
+                                    );
+                                }
+                            };
                             break;
                         }
                         TaskStatus::Failed => {
                             let task_err = task.error.unwrap();
-                            log::error!("task failed: {:?}", task_err);
+                            log::error!(
+                                "{:?}: task failed. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, err: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                                task_err,
+                            );
                             let submit_proof_req = SubmitProofRequest {
-                                uuid: coordinator_task_uuid,
-                                task_id: coordinator_task_id,
+                                uuid: coordinator_task_uuid.clone(),
+                                task_id: coordinator_task_id.clone(),
                                 task_type: task.circuit_type,
                                 status: ProofStatus::Error,
                                 proof: "".to_string(),
                                 failure_type: Some(ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
                                 failure_msg: Some(task_err),
                             };
-                            if let Ok(_) =
-                                self.coordinator_clients[i].submit_proof(&submit_proof_req)
-                            {
-                                log::info!("proof submitted");
-                            } else {
-                                log::error!("failed to submit proof");
-                            }
+                            match coordinator_client.submit_proof(&submit_proof_req) {
+                                Ok(_) => {
+                                    log::info!(
+                                        "{:?}: proof_err submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                    );
+                                }
+                                Err(e) => {
+                                    log::error!(
+                                        "{:?}: failed to submit proof_err. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, submission err: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                        e,
+                                    );
+                                }
+                            };
                             break;
                         }
                     }
@@ -161,7 +242,7 @@ impl Prover {
     fn build_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
             task.task_type == self.circuit_type,
-            "task type mismatch. self: {:?}, task: {:?}, uuid: {:?}, coordinator_task_id: {:?}",
+            "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
             self.circuit_type,
             task.task_type,
             task.uuid,
