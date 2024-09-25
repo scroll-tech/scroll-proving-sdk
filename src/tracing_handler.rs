@@ -63,7 +63,7 @@ impl L2gethClient {
         block_hashes: &[CommonHash],
     ) -> anyhow::Result<Vec<BlockTrace>> {
         if block_hashes.is_empty() {
-            log::error!("[prover] failed to get sorted traces: block_hashes are empty");
+            log::error!("failed to get sorted traces: block_hashes are empty");
             anyhow::bail!("block_hashes are empty")
         }
 
@@ -93,7 +93,7 @@ impl L2gethClient {
         while i < block_numbers.len() - 1 {
             if block_numbers[i] + 1 != block_numbers[i + 1] {
                 log::error!(
-                    "[prover] block numbers are not continuous, got {} and {}",
+                    "block numbers are not continuous, got {} and {}",
                     block_numbers[i],
                     block_numbers[i + 1]
                 );
