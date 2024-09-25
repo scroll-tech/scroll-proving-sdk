@@ -7,14 +7,10 @@ use std::fs::File;
 pub struct Config {
     pub prover_name_prefix: String,
     pub keys_dir: String,
-    pub db: DbConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
 }
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DbConfig {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoordinatorConfig {
@@ -45,7 +41,11 @@ pub struct LocalProverConfig {
     // TODO:
     // params path
     // assets path
+    // DB config
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DbConfig {}
 
 impl Config {
     pub fn from_reader<R>(reader: R) -> anyhow::Result<Self>

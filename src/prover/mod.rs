@@ -21,8 +21,6 @@ pub struct Prover {
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
-    // TODO:
-    // db: Db,
 }
 
 impl Prover {
