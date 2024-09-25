@@ -5,8 +5,8 @@ pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
     coordinator_handler::{
-        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
-        ProofStatus, SubmitProofRequest,
+        ChunkTaskDetail, CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData,
+        ProofFailureType, ProofStatus, SubmitProofRequest,
     },
     tracing_handler::L2gethClient,
 };
@@ -252,12 +252,18 @@ impl Prover {
                 unreachable!();
             }
             CircuitType::Chunk => {
-                // TODO:
+                let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
+                let traces = self
+                    .l2geth_client
+                    .unwrap()
+                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)?;
+                let input = serde_json::to_string(&traces)?;
+
                 Ok(ProveRequest {
                     circuit_type: task.task_type,
                     circuit_version: "".to_string(), // TODO: circuit_version
                     hard_fork_name: task.hard_fork_name.clone(),
-                    input: task.task_data.clone(),
+                    input,
                 })
             }
             CircuitType::Batch => {

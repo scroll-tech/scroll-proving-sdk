@@ -2,6 +2,7 @@ use crate::config::L2GethConfig;
 use ethers_core::types::BlockNumber;
 use ethers_core::types::H256;
 use ethers_providers::{Http, Provider};
+use prover_darwin_v2::BlockTrace;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 use tokio::runtime::Runtime;
@@ -54,5 +55,12 @@ impl L2gethClient {
 
     pub fn block_number_sync(&self) -> anyhow::Result<BlockNumber> {
         self.rt.block_on(self.block_number_async())
+    }
+
+    pub fn get_sorted_traces_by_hashes(
+        &self,
+        hashes: Vec<CommonHash>,
+    ) -> anyhow::Result<Vec<BlockTrace>> {
+        todo!()
     }
 }

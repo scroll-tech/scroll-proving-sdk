@@ -1,5 +1,5 @@
 use super::error::ErrorCode;
-use crate::prover::CircuitType;
+use crate::{prover::CircuitType, tracing_handler::CommonHash};
 use ethers_core::types::U64;
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -70,6 +70,11 @@ pub struct GetTaskResponseData {
     pub task_type: CircuitType,
     pub task_data: String,
     pub hard_fork_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChunkTaskDetail {
+    pub block_hashes: Vec<CommonHash>,
 }
 
 #[derive(Serialize, Deserialize)] // TODO: Default?
