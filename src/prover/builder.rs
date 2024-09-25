@@ -2,7 +2,7 @@ use super::CircuitType;
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
-    prover::{Prover, ProvingService},
+    prover::{Prover, proving_service::{GetVksRequest, ProvingService}},
     tracing_handler::L2gethClient,
 };
 use std::path::PathBuf;
