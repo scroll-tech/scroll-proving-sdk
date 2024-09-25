@@ -127,6 +127,7 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
+        // TODO: fix
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
             prover_name: self.prover_name.clone(),
