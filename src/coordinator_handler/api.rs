@@ -1,6 +1,6 @@
 use super::{
     ChallengeResponseData, GetTaskRequest, GetTaskResponseData, LoginRequest, LoginResponseData,
-    Response,
+    Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use reqwest::{header::CONTENT_TYPE, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
@@ -100,6 +100,15 @@ impl Api {
         token: &String,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
+        self.post_with_token(method, req, token).await
+    }
+
+    pub async fn submit_proof(
+        &self,
+        req: &SubmitProofRequest,
+        token: &String,
+    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
+        let method = "/coordinator/v1/submit_proof";
         self.post_with_token(method, req, token).await
     }
 }

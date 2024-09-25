@@ -1,6 +1,6 @@
 use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
-    LoginRequest, Response,
+    LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use crate::{config::CoordinatorConfig, prover::CircuitType};
 use std::sync::{Mutex, MutexGuard};
@@ -49,12 +49,35 @@ impl CoordinatorClient {
         }
     }
 
+    pub fn submit_proof(
+        &self,
+        req: &SubmitProofRequest,
+    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
+        let token = self.get_token_sync(false)?;
+        let response = self.submit_proof_sync(req, &token)?;
+
+        if response.errcode == ErrorCode::ErrJWTTokenExpired {
+            let token = self.get_token_sync(true)?;
+            self.submit_proof_sync(req, &token)
+        } else {
+            Ok(response)
+        }
+    }
+
     fn get_task_sync(
         &self,
         req: &GetTaskRequest,
         token: &String,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
         self.rt.block_on(self.api.get_task(req, token))
+    }
+
+    fn submit_proof_sync(
+        &self,
+        req: &SubmitProofRequest,
+        token: &String,
+    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
+        self.rt.block_on(self.api.submit_proof(req, token))
     }
 
     fn get_token_sync(&self, force_relogin: bool) -> anyhow::Result<String> {
