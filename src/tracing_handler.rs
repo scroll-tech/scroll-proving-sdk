@@ -59,7 +59,7 @@ impl L2gethClient {
 
     pub fn get_sorted_traces_by_hashes(
         &self,
-        hashes: Vec<CommonHash>,
+        hashes: &[CommonHash],
     ) -> anyhow::Result<Vec<BlockTrace>> {
         todo!()
     }

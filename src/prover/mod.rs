@@ -255,6 +255,7 @@ impl Prover {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
                 let traces = self
                     .l2geth_client
+                    .as_ref()
                     .unwrap()
                     .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)?;
                 let input = serde_json::to_string(&traces)?;
