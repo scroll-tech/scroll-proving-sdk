@@ -1,42 +1,37 @@
 pub mod builder;
 pub mod proving_service;
-pub use {builder::ProverBuilder, proving_service::ProvingService};
+pub mod types;
+pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
-    coordinator_handler::{CoordinatorClient, CoordinatorTask, KeySigner},
+    coordinator_handler::{
+        ChunkTaskDetail, CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData,
+        ProofFailureType, ProofStatus, SubmitProofRequest,
+    },
     tracing_handler::L2gethClient,
 };
-use anyhow::Ok;
-use proving_service::{GetTaskRequest, ProveRequest, TaskStatus};
-use serde::{Deserialize, Serialize};
+use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::thread;
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub enum CircuitType {
-    Chunk,
-    Batch,
-    Bundle,
-}
 
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
-    prover_name_prefix: String,
     circuit_type: CircuitType,
-    coordinator_client: CoordinatorClient,
+    coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
-    key_signers: Vec<KeySigner>,
-    // TODO:
-    // db: Db,
 }
 
 impl Prover {
     pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
+        assert!(self.n_workers == self.coordinator_clients.len());
+        if self.circuit_type == CircuitType::Chunk {
+            assert!(self.l2geth_client.is_some());
+        }
+
         for i in 0..self.n_workers {
             let self_clone = std::sync::Arc::clone(&self);
-            // spin up a thread
             thread::spawn(move || {
                 self_clone.working_loop(i);
             });
@@ -46,37 +41,181 @@ impl Prover {
     }
 
     fn working_loop(&self, i: usize) {
-        let worker_name = format!("{}{}", self.prover_name_prefix, i);
-        let key_signer = self.key_signers[i].clone();
-
         loop {
-            let coordinator_task = self.coordinator_client.get_task();
+            let coordinator_client = &self.coordinator_clients[i];
+            let prover_name = coordinator_client.prover_name.clone();
 
-            if coordinator_task.is_none() {
+            log::info!("{:?}: getting task from coordinator", prover_name);
+
+            let get_task_request = self.build_get_task_request();
+            let coordinator_task = coordinator_client.get_task(&get_task_request);
+
+            if let Err(e) = coordinator_task {
+                log::error!("{:?}: failed to get task: {:?}", prover_name, e);
+                thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                continue;
+            } else if coordinator_task.as_ref().unwrap().errcode != ErrorCode::Success {
+                log::error!(
+                    "{:?}: failed to get task, errcode: {:?}, errmsg: {:?}",
+                    prover_name,
+                    coordinator_task.as_ref().unwrap().errcode,
+                    coordinator_task.as_ref().unwrap().errmsg
+                );
+                thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                continue;
+            } else if coordinator_task.as_ref().unwrap().data.is_none() {
+                log::error!("{:?}: no task is available", prover_name);
                 thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
                 continue;
             }
 
-            let proving_input = self.build_proving_input(coordinator_task.unwrap());
+            let coordinator_task = coordinator_task.unwrap().data.unwrap();
+            let coordinator_task_uuid = coordinator_task.uuid.clone();
+            let coordinator_task_id = coordinator_task.task_id.clone();
+            let task_type = coordinator_task.task_type;
+
+            let proving_input = match self.build_proving_input(&coordinator_task) {
+                Ok(input) => input,
+                Err(e) => {
+                    log::error!(
+                        "{:?}: failed to build proving input. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
+                        prover_name,
+                        task_type,
+                        coordinator_task_uuid,
+                        coordinator_task_id,
+                        e,
+                    );
+                    continue;
+                }
+            };
+
             let proving_task = self.proving_service.prove(proving_input);
             if proving_task.error.is_some() {
-                // TODO: log error
-                continue; // retry
+                log::error!(
+                    "{:?}: failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
+                    prover_name,
+                    task_type,
+                    coordinator_task_uuid,
+                    coordinator_task_id,
+                    proving_task.error,
+                );
+                continue;
             } else {
+                let proving_service_task_id = proving_task.task_id;
                 loop {
-                    let task = self.proving_service.query_task(GetTaskRequest {
-                        task_id: proving_task.task_id.clone(),
+                    let task = self.proving_service.query_task(QueryTaskRequest {
+                        task_id: proving_service_task_id.clone(),
                     });
                     match task.status {
+                        TaskStatus::Queued => {
+                            log::info!(
+                                "{:?}: task queued. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}", 
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
+                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                        }
+                        TaskStatus::Proving => {
+                            log::info!(
+                                "{:?}: task proving. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
+                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                        }
                         TaskStatus::Success => {
-                            // TODO: send back proof
+                            log::info!(
+                                "{:?}: task proved successfully. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                            );
+                            let submit_proof_req = SubmitProofRequest {
+                                uuid: coordinator_task_uuid.clone(),
+                                task_id: coordinator_task_id.clone(),
+                                task_type: task.circuit_type,
+                                status: ProofStatus::Ok,
+                                proof: task.proof.unwrap(),
+                                failure_type: None,
+                                failure_msg: None,
+                            };
+                            match coordinator_client.submit_proof(&submit_proof_req) {
+                                Ok(_) => {
+                                    log::info!(
+                                        "{:?}: proof submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                    );
+                                }
+                                Err(e) => {
+                                    log::error!(
+                                        "{:?}: failed to submit proof. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, submission err: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                        e,
+                                    );
+                                }
+                            };
+                            break;
                         }
                         TaskStatus::Failed => {
-                            // TODO: log error
-                            // TODO: send back error
-                        }
-                        _ => {
-                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                            let task_err = task.error.unwrap();
+                            log::error!(
+                                "{:?}: task failed. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, err: {:?}",
+                                prover_name,
+                                task_type,
+                                coordinator_task_uuid,
+                                coordinator_task_id,
+                                proving_service_task_id.clone(),
+                                task_err,
+                            );
+                            let submit_proof_req = SubmitProofRequest {
+                                uuid: coordinator_task_uuid.clone(),
+                                task_id: coordinator_task_id.clone(),
+                                task_type: task.circuit_type,
+                                status: ProofStatus::Error,
+                                proof: "".to_string(),
+                                failure_type: Some(ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
+                                failure_msg: Some(task_err),
+                            };
+                            match coordinator_client.submit_proof(&submit_proof_req) {
+                                Ok(_) => {
+                                    log::info!(
+                                        "{:?}: proof_err submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                    );
+                                }
+                                Err(e) => {
+                                    log::error!(
+                                        "{:?}: failed to submit proof_err. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}, submission err: {:?}",
+                                        prover_name,
+                                        task_type,
+                                        coordinator_task_uuid,
+                                        coordinator_task_id,
+                                        proving_service_task_id.clone(),
+                                        e,
+                                    );
+                                }
+                            };
+                            break;
                         }
                     }
                 }
@@ -84,13 +223,66 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: CoordinatorTask) -> ProveRequest {
-        match self.circuit_type {
-            CircuitType::Chunk => {}
-            CircuitType::Batch => {}
-            CircuitType::Bundle => {}
-        }
+    fn build_get_task_request(&self) -> GetTaskRequest {
+        let prover_height = self.l2geth_client.as_ref().and_then(|l2geth_client| {
+            l2geth_client
+                .block_number_sync()
+                .ok()
+                .and_then(|block_number| block_number.as_number())
+        });
 
-        todo!()
+        GetTaskRequest {
+            task_types: vec![self.circuit_type],
+            prover_height,
+        }
+    }
+
+    fn build_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+        anyhow::ensure!(
+            task.task_type == self.circuit_type,
+            "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
+            self.circuit_type,
+            task.task_type,
+            task.uuid,
+            task.task_id
+        );
+
+        match task.task_type {
+            CircuitType::Undefined => {
+                unreachable!();
+            }
+            CircuitType::Chunk => {
+                let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
+                let traces = self
+                    .l2geth_client
+                    .as_ref()
+                    .unwrap()
+                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)?;
+                let input = serde_json::to_string(&traces)?;
+
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input,
+                })
+            }
+            CircuitType::Batch => {
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: task.task_data.clone(),
+                })
+            }
+            CircuitType::Bundle => {
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: task.task_data.clone(),
+                })
+            }
+        }
     }
 }

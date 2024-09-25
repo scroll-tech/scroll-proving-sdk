@@ -1,26 +1,29 @@
 use crate::config::L2GethConfig;
-use anyhow::Result;
 use ethers_core::types::BlockNumber;
 use ethers_core::types::H256;
 use ethers_providers::{Http, Provider};
+use prover_darwin_v2::BlockTrace;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
+use tokio::runtime::Runtime;
 
 pub type CommonHash = H256;
 
 pub struct L2gethClient {
-    // id: String, // TODO: prover_name
     provider: Provider<Http>,
+    rt: Runtime,
 }
 
 impl L2gethClient {
     pub fn new(cfg: L2GethConfig) -> anyhow::Result<Self> {
         let provider = Provider::<Http>::try_from(cfg.endpoint)?;
-
-        Ok(Self { provider })
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        Ok(Self { provider, rt })
     }
 
-    pub async fn get_block_trace_by_hash<T>(&self, hash: &CommonHash) -> Result<T>
+    async fn get_block_trace_by_hash_async<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
     where
         T: Serialize + DeserializeOwned + Debug + Send,
     {
@@ -36,10 +39,28 @@ impl L2gethClient {
         Ok(trace)
     }
 
-    pub async fn block_number(&self) -> Result<BlockNumber> {
+    pub fn get_block_trace_by_hash_sync<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
+    where
+        T: Serialize + DeserializeOwned + Debug + Send,
+    {
+        self.rt.block_on(self.get_block_trace_by_hash_async(hash))
+    }
+
+    async fn block_number_async(&self) -> anyhow::Result<BlockNumber> {
         log::info!("l2geth_client calling block_number");
 
         let trace = self.provider.request("eth_blockNumber", ()).await?;
         Ok(trace)
+    }
+
+    pub fn block_number_sync(&self) -> anyhow::Result<BlockNumber> {
+        self.rt.block_on(self.block_number_async())
+    }
+
+    pub fn get_sorted_traces_by_hashes(
+        &self,
+        hashes: &[CommonHash],
+    ) -> anyhow::Result<Vec<BlockTrace>> {
+        todo!()
     }
 }
