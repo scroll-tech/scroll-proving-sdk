@@ -29,7 +29,7 @@ impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
-    fn get_vks(&self, req: GetVksRequest) -> Vec<String> {
+    fn get_vk(&self, req: GetVksRequest) -> String {
         todo!()
     }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
