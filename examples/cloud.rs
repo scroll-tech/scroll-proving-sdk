@@ -1,13 +1,22 @@
+use clap::Parser;
 use std::sync::Arc;
 
 use scroll_proving_sdk::{
-    utils::init_tracing,
     config::{CloudProverConfig, Config},
     prover::{
         proving_service::{ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse},
         ProverBuilder, ProvingService,
     },
+    utils::init_tracing,
 };
+
+#[derive(Parser, Debug)]
+#[clap(disable_version_flag = true)]
+struct Args {
+    /// Path of config file
+    #[arg(long = "config", default_value = "config.json")]
+    config_file: String,
+}
 
 struct CloudProver {
     endpoint: String,
@@ -38,11 +47,9 @@ impl CloudProver {
 fn main() -> anyhow::Result<()> {
     init_tracing();
 
-    // TODO: specify the path to the config file
-    let cfg: Config = Config::from_file("config.json".to_owned())?;
-
+    let args = Args::parse();
+    let cfg: Config = Config::from_file(args.config_file)?;
     let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
-
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
         .build()?;
