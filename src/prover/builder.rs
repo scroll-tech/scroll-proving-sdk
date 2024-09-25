@@ -40,7 +40,11 @@ impl ProverBuilder {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
-        let vks = self.proving_service.as_ref().unwrap().get_vks();
+        let get_vks_request = GetVksRequest {
+            circuit_type: self.cfg.prover.circuit_type,
+            circuit_version: self.cfg.prover.circuit_version.clone(),
+        };
+        let vks = self.proving_service.as_ref().unwrap().get_vks(get_vks_request);
         if vks.is_empty() {
             anyhow::bail!("no vks provided");
         }

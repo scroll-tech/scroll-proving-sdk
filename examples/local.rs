@@ -24,7 +24,7 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    fn get_vks(&self) -> Vec<String> {
+    fn get_vks(&self, req: GetVksRequest) -> Vec<String> {
         todo!()
     }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
