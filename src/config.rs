@@ -25,6 +25,7 @@ pub struct L2GethConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProverConfig {
     pub circuit_type: CircuitType,
+    pub circuit_version: String,
     pub n_workers: usize,
     pub cloud: Option<CloudProverConfig>,
     pub local: Option<LocalProverConfig>,

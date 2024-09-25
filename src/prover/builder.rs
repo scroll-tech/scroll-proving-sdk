@@ -59,6 +59,7 @@ impl ProverBuilder {
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_type,
                     vks.clone(),
+                    self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
                 )
@@ -73,6 +74,7 @@ impl ProverBuilder {
 
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
+            circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
             l2geth_client,
             proving_service: self.proving_service.unwrap(),

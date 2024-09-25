@@ -2,13 +2,14 @@ use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
-use crate::{config::CoordinatorConfig, prover::CircuitType};
+use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
 use std::sync::{Mutex, MutexGuard};
 use tokio::runtime::Runtime;
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
     vks: Vec<String>,
+    circuit_version: String,
     pub prover_name: String,
     key_signer: KeySigner,
     api: Api,
@@ -21,6 +22,7 @@ impl CoordinatorClient {
         cfg: CoordinatorConfig,
         circuit_type: CircuitType,
         vks: Vec<String>,
+        circuit_version: String,
         prover_name: String,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
@@ -31,6 +33,7 @@ impl CoordinatorClient {
         let client = Self {
             circuit_type,
             vks,
+            circuit_version,
             prover_name,
             key_signer,
             api,
@@ -130,11 +133,10 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
-        // TODO: fix
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
             prover_name: self.prover_name.clone(),
-            prover_version: "crate::version::get_version()".to_string(),
+            prover_version: get_version(&self.circuit_version).to_string(),
             prover_types: vec![self.circuit_type],
             vks: self.vks.clone(),
         };
