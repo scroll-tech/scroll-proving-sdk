@@ -4,7 +4,9 @@ use std::sync::Arc;
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
     prover::{
-        proving_service::{ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse},
+        proving_service::{
+            GetVksRequest, ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse,
+        },
         ProverBuilder, ProvingService,
     },
     utils::init_tracing,
