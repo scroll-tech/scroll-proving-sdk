@@ -9,6 +9,7 @@ pub trait ProvingService {
 pub struct ProveRequest {
     pub circuit_type: CircuitType,
     pub circuit_version: String,
+    pub hard_fork_name: String,
     pub input: String,
 }
 

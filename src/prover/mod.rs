@@ -251,11 +251,31 @@ impl Prover {
             CircuitType::Undefined => {
                 unreachable!();
             }
-            CircuitType::Chunk => {}
-            CircuitType::Batch => {}
-            CircuitType::Bundle => {}
+            CircuitType::Chunk => {
+                // TODO:
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: task.task_data.clone(),
+                })
+            }
+            CircuitType::Batch => {
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: task.task_data.clone(),
+                })
+            }
+            CircuitType::Bundle => {
+                Ok(ProveRequest {
+                    circuit_type: task.task_type,
+                    circuit_version: "".to_string(), // TODO: circuit_version
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: task.task_data.clone(),
+                })
+            }
         }
-
-        todo!()
     }
 }
