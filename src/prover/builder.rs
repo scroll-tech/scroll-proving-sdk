@@ -2,7 +2,10 @@ use super::CircuitType;
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
-    prover::{Prover, proving_service::{GetVksRequest, ProvingService}},
+    prover::{
+        proving_service::{GetVksRequest, ProvingService},
+        Prover,
+    },
     tracing_handler::L2gethClient,
 };
 use std::path::PathBuf;
@@ -44,7 +47,11 @@ impl ProverBuilder {
             circuit_type: self.cfg.prover.circuit_type,
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };
-        let vks = self.proving_service.as_ref().unwrap().get_vks(get_vks_request);
+        let vks = self
+            .proving_service
+            .as_ref()
+            .unwrap()
+            .get_vks(get_vks_request);
         if vks.is_empty() {
             anyhow::bail!("no vks provided");
         }
