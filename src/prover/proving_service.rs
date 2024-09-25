@@ -17,6 +17,7 @@ pub struct ProveResponse {
     pub task_id: String,
     pub circuit_type: CircuitType,
     pub circuit_version: String,
+    pub hard_fork_name: String,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
@@ -34,8 +35,9 @@ pub struct QueryTaskRequest {
 
 pub struct QueryTaskResponse {
     pub task_id: String,
-    pub circuit_version: String,
     pub circuit_type: CircuitType,
+    pub circuit_version: String,
+    pub hard_fork_name: String,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
