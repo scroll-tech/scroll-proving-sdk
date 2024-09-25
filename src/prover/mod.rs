@@ -5,8 +5,8 @@ pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
     coordinator_handler::{
-        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofStatus,
-        SubmitProofRequest,
+        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
+        ProofStatus, SubmitProofRequest,
     },
     tracing_handler::L2gethClient,
 };
@@ -90,6 +90,14 @@ impl Prover {
                         task_id: proving_service_task_id.clone(),
                     });
                     match task.status {
+                        TaskStatus::Queued => {
+                            log::info!("task queued");
+                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                        }
+                        TaskStatus::Proving => {
+                            log::info!("task proving");
+                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                        }
                         TaskStatus::Success => {
                             let submit_proof_req = SubmitProofRequest {
                                 uuid: coordinator_task_uuid,
@@ -110,12 +118,25 @@ impl Prover {
                             break;
                         }
                         TaskStatus::Failed => {
-                            log::error!("task failed: {:?}", task.error.unwrap());
-                            // TODO: send back error
-                        }
-                        _ => {
-                            // TODO: print more logs
-                            thread::sleep(std::time::Duration::from_secs(WORKER_SLEEP_SEC));
+                            let task_err = task.error.unwrap();
+                            log::error!("task failed: {:?}", task_err);
+                            let submit_proof_req = SubmitProofRequest {
+                                uuid: coordinator_task_uuid,
+                                task_id: coordinator_task_id,
+                                task_type: task.circuit_type,
+                                status: ProofStatus::Error,
+                                proof: "".to_string(),
+                                failure_type: Some(ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
+                                failure_msg: Some(task_err),
+                            };
+                            if let Ok(_) =
+                                self.coordinator_clients[i].submit_proof(&submit_proof_req)
+                            {
+                                log::info!("proof submitted");
+                            } else {
+                                log::error!("failed to submit proof");
+                            }
+                            break;
                         }
                     }
                 }
