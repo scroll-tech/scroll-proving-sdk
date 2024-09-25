@@ -21,14 +21,17 @@ struct Args {
 struct LocalProver {}
 
 impl ProvingService for LocalProver {
+    fn is_local(&self) -> bool {
+        true
+    }
+    fn get_vks(&self) -> Vec<String> {
+        todo!()
+    }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
     fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
-    }
-    fn is_local(&self) -> bool {
-        true
     }
 }
 

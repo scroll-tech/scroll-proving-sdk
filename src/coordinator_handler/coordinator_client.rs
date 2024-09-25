@@ -8,6 +8,7 @@ use tokio::runtime::Runtime;
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
+    vks: Vec<String>,
     pub prover_name: String,
     key_signer: KeySigner,
     api: Api,
@@ -19,6 +20,7 @@ impl CoordinatorClient {
     pub fn new(
         cfg: CoordinatorConfig,
         circuit_type: CircuitType,
+        vks: Vec<String>,
         prover_name: String,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
@@ -28,6 +30,7 @@ impl CoordinatorClient {
         let api = Api::new(&cfg.base_url)?; // TODO: retry policy
         let client = Self {
             circuit_type,
+            vks,
             prover_name,
             key_signer,
             api,
@@ -133,7 +136,7 @@ impl CoordinatorClient {
             prover_name: self.prover_name.clone(),
             prover_version: "crate::version::get_version()".to_string(),
             prover_types: vec![self.circuit_type],
-            vks: vec!["self.vks.clone()".to_string()],
+            vks: self.vks.clone(),
         };
 
         let buffer = rlp::encode(&login_message);

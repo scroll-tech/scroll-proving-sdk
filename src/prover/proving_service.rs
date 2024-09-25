@@ -1,9 +1,10 @@
 use super::CircuitType;
 
 pub trait ProvingService {
+    fn is_local(&self) -> bool;
+    fn get_vks(&self) -> Vec<String>; // TODO: Result<Vec<String>, Error>
     fn prove(&self, req: ProveRequest) -> ProveResponse; // TODO: Result<ProveResponse, Error>
     fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse; // TODO: Result<QueryTaskResponse, Error>
-    fn is_local(&self) -> bool;
 }
 
 pub struct ProveRequest {

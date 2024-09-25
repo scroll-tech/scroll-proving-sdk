@@ -40,6 +40,11 @@ impl ProverBuilder {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
+        let vks = self.proving_service.as_ref().unwrap().get_vks();
+        if vks.is_empty() {
+            anyhow::bail!("no vks provided");
+        }
+
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 let key_path = PathBuf::from(&self.cfg.keys_dir).join(i.to_string());
@@ -53,6 +58,7 @@ impl ProverBuilder {
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_type,
+                    vks.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
                 )

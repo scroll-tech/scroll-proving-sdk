@@ -24,14 +24,17 @@ struct CloudProver {
 }
 
 impl ProvingService for CloudProver {
+    fn is_local(&self) -> bool {
+        false
+    }
+    fn get_vks(&self) -> Vec<String> {
+        todo!()
+    }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
     fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
-    }
-    fn is_local(&self) -> bool {
-        false
     }
 }
 
