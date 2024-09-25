@@ -4,7 +4,10 @@ pub mod types;
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
-    coordinator_handler::{CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData},
+    coordinator_handler::{
+        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofStatus,
+        SubmitProofRequest,
+    },
     tracing_handler::L2gethClient,
 };
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
@@ -65,8 +68,10 @@ impl Prover {
             }
 
             let coordinator_task = coordinator_task.unwrap().data.unwrap();
+            let coordinator_task_uuid = coordinator_task.uuid.clone();
+            let coordinator_task_id = coordinator_task.task_id.clone();
 
-            let proving_input = match self.build_proving_input(coordinator_task) {
+            let proving_input = match self.build_proving_input(&coordinator_task) {
                 Ok(input) => input,
                 Err(e) => {
                     log::error!("failed to build proving input: {:?}", e);
@@ -79,13 +84,30 @@ impl Prover {
                 log::error!("failed to prove: {:?}", proving_task.error);
                 continue;
             } else {
+                let proving_service_task_id = proving_task.task_id;
                 loop {
                     let task = self.proving_service.query_task(QueryTaskRequest {
-                        task_id: proving_task.task_id.clone(),
+                        task_id: proving_service_task_id.clone(),
                     });
                     match task.status {
                         TaskStatus::Success => {
-                            // TODO: send back proof
+                            let submit_proof_req = SubmitProofRequest {
+                                uuid: coordinator_task_uuid,
+                                task_id: coordinator_task_id,
+                                task_type: task.circuit_type,
+                                status: ProofStatus::Ok,
+                                proof: task.proof.unwrap(),
+                                failure_type: None,
+                                failure_msg: None,
+                            };
+                            if let Ok(_) =
+                                self.coordinator_clients[i].submit_proof(&submit_proof_req)
+                            {
+                                log::info!("proof submitted");
+                            } else {
+                                log::error!("failed to submit proof");
+                            }
+                            break;
                         }
                         TaskStatus::Failed => {
                             log::error!("task failed: {:?}", task.error.unwrap());
@@ -115,7 +137,7 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+    fn build_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
             task.task_type == self.circuit_type,
             "task type mismatch. self: {:?}, task: {:?}, uuid: {:?}, coordinator_task_id: {:?}",

@@ -63,7 +63,7 @@ pub struct GetTaskRequest {
     pub prover_height: Option<U64>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GetTaskResponseData {
     pub uuid: String,
     pub task_id: String,
