@@ -29,6 +29,8 @@ impl LocalProver {
 }
 
 fn main() -> anyhow::Result<()> {
+    ultis::init_tracing();
+
     // TODO: specify the path to the config file
     let cfg: Config = Config::from_file("config.json".to_owned())?;
 
