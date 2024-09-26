@@ -41,11 +41,7 @@ impl Prover {
             });
         }
 
-        while let Some(res) = provers.join_next().await {
-            if let Err(e) = res {
-                log::error!("prover worker failed: {:?}", e);
-            }
-        }
+        while provers.join_next().await.is_some() {}
     }
 
     async fn working_loop(&self, i: usize) {
