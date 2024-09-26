@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
     prover::{
-        proving_service::{GetVksRequest, ProvingService},
+        proving_service::{GetVkRequest, ProvingService},
         Prover,
     },
     tracing_handler::L2gethClient,
@@ -43,7 +43,7 @@ impl ProverBuilder {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
-        let get_vk_request = GetVksRequest {
+        let get_vk_request = GetVkRequest {
             circuit_type: self.cfg.prover.circuit_type,
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };

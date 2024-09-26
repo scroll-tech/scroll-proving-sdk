@@ -5,7 +5,7 @@ use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
     prover::{
         proving_service::{
-            GetVksRequest, ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse,
+            GetVkRequest, ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse,
         },
         ProverBuilder, ProvingService,
     },
@@ -26,7 +26,7 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    fn get_vk(&self, req: GetVksRequest) -> String {
+    fn get_vk(&self, req: GetVkRequest) -> String {
         todo!()
     }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
