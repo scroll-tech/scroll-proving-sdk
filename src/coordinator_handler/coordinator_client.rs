@@ -3,8 +3,7 @@ use super::{
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
-use std::sync::{Mutex, MutexGuard};
-use tokio::runtime::Runtime;
+use tokio::sync::MutexGuard;
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
@@ -13,8 +12,7 @@ pub struct CoordinatorClient {
     pub prover_name: String,
     key_signer: KeySigner,
     api: Api,
-    token: Mutex<Option<String>>,
-    rt: Runtime,
+    token: tokio::sync::Mutex<Option<String>>,
 }
 
 impl CoordinatorClient {
@@ -26,9 +24,6 @@ impl CoordinatorClient {
         prover_name: String,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
         let api = Api::new(cfg)?;
         let client = Self {
             circuit_type,
@@ -37,8 +32,7 @@ impl CoordinatorClient {
             prover_name,
             key_signer,
             api,
-            token: Mutex::new(None),
-            rt,
+            token: tokio::sync::Mutex::new(None),
         };
         Ok(client)
     }
@@ -80,13 +74,12 @@ impl CoordinatorClient {
     /// If the token is expired, `force_relogin` is set to `true`, or a login was never performed
     /// before, it will authenticate and fetch a new token.
     async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
-        let token_guard = self
-            .token
-            .lock()
-            .expect("Mutex locking only occurs within `get_token` fn, so there can be no double `lock` for one thread");
+        let token_guard = self.token.lock().await;
+        // .expect("Mutex locking only occurs within `get_token` fn, so there can be no double `lock` for one thread");
 
         match token_guard.as_deref() {
-            Some(token) if !force_relogin => return Ok(token.to_string()),
+            // match *token_guard {
+            Some(ref token) if !force_relogin => return Ok(token.to_string()),
             _ => (),
         }
 
