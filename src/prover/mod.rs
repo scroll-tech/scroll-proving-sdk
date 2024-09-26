@@ -25,20 +25,18 @@ pub struct Prover {
 }
 
 impl Prover {
-    pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
+    pub async fn run(self: Self) {
         assert!(self.n_workers == self.coordinator_clients.len());
         if self.circuit_type == CircuitType::Chunk {
             assert!(self.l2geth_client.is_some());
         }
 
-        for i in 0..self.n_workers {
-            let self_clone = std::sync::Arc::clone(&self);
-            thread::spawn(move || {
-                self_clone.working_loop(i);
-            });
-        }
-
-        Ok(())
+        // for i in 0..self.n_workers {
+        //     let self_clone = std::sync::Arc::clone(&self);
+        //     thread::spawn(move || {
+        //         self_clone.working_loop(i);
+        //     });
+        // }
     }
 
     fn working_loop(&self, i: usize) {

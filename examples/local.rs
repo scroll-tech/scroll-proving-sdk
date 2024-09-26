@@ -43,7 +43,8 @@ impl LocalProver {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -53,5 +54,7 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(local_prover))
         .build()?;
 
-    Arc::new(prover).run()
+    prover.run().await;
+
+    Ok(())
 }
