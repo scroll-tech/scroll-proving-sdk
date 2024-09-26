@@ -1,6 +1,7 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
+use tokio::task::JoinSet;
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
@@ -25,21 +26,29 @@ pub struct Prover {
 }
 
 impl Prover {
-    pub async fn run(self: Self) {
+    pub async fn run(&self) {
         assert!(self.n_workers == self.coordinator_clients.len());
         if self.circuit_type == CircuitType::Chunk {
             assert!(self.l2geth_client.is_some());
         }
 
-        // for i in 0..self.n_workers {
-        //     let self_clone = std::sync::Arc::clone(&self);
-        //     thread::spawn(move || {
-        //         self_clone.working_loop(i);
-        //     });
-        // }
+        let mut provers = JoinSet::new();
+        for i in 0..self.n_workers {
+            // let self_clone = std::sync::Arc::clone(&self);
+            // thread::spawn(move || {
+            //     self_clone.working_loop(i);
+            // });
+            provers.spawn(self.working_loop(i));
+        }
+
+        while let Some(res) = provers.join_next().await {
+            if let Err(e) = res {
+                log::error!("prover worker failed: {:?}", e);
+            }
+        }
     }
 
-    fn working_loop(&self, i: usize) {
+    async fn working_loop(&self, i: usize) {
         loop {
             let coordinator_client = &self.coordinator_clients[i];
             let prover_name = coordinator_client.prover_name.clone();
