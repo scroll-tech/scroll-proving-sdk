@@ -26,7 +26,7 @@ pub struct Prover {
 }
 
 impl Prover {
-    pub async fn run(&self) {
+    pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
         if self.circuit_type == CircuitType::Chunk {
             assert!(self.l2geth_client.is_some());
@@ -34,10 +34,6 @@ impl Prover {
 
         let mut provers = JoinSet::new();
         for i in 0..self.n_workers {
-            // let self_clone = std::sync::Arc::clone(&self);
-            // thread::spawn(move || {
-            //     self_clone.working_loop(i);
-            // });
             provers.spawn(self.working_loop(i));
         }
 
