@@ -51,8 +51,8 @@ impl Prover {
 
             log::info!("{:?}: getting task from coordinator", prover_name);
 
-            let get_task_request = self.build_get_task_request();
-            let coordinator_task = coordinator_client.get_task(&get_task_request);
+            let get_task_request = self.build_get_task_request().await;
+            let coordinator_task = coordinator_client.get_task(&get_task_request).await;
 
             if let Err(e) = coordinator_task {
                 log::error!("{:?}: failed to get task: {:?}", prover_name, e);
@@ -227,13 +227,14 @@ impl Prover {
         }
     }
 
-    fn build_get_task_request(&self) -> GetTaskRequest {
-        let prover_height = self.l2geth_client.as_ref().and_then(|l2geth_client| {
-            l2geth_client
-                .block_number_sync()
-                .ok()
-                .and_then(|block_number| block_number.as_number())
-        });
+    async fn build_get_task_request(&self) -> GetTaskRequest {
+        let prover_height = match &self.l2geth_client {
+            None => None,
+            Some(l2geth_client) => match l2geth_client.block_number().await {
+                Ok(block_number) => block_number.as_number(),
+                Err(_) => None,
+            },
+        };
 
         GetTaskRequest {
             task_types: vec![self.circuit_type],

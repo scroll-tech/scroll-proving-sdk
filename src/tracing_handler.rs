@@ -47,15 +47,11 @@ impl L2gethClient {
         self.rt.block_on(self.get_block_trace_by_hash_async(hash))
     }
 
-    async fn block_number_async(&self) -> anyhow::Result<BlockNumber> {
+    pub async fn block_number(&self) -> anyhow::Result<BlockNumber> {
         log::info!("l2geth_client calling block_number");
 
         let trace = self.provider.request("eth_blockNumber", ()).await?;
         Ok(trace)
-    }
-
-    pub fn block_number_sync(&self) -> anyhow::Result<BlockNumber> {
-        self.rt.block_on(self.block_number_async())
     }
 
     pub fn get_sorted_traces_by_hashes(

@@ -43,7 +43,10 @@ impl CoordinatorClient {
         Ok(client)
     }
 
-    pub fn get_task(&self, req: &GetTaskRequest) -> anyhow::Result<Response<GetTaskResponseData>> {
+    pub async fn get_task(
+        &self,
+        req: &GetTaskRequest,
+    ) -> anyhow::Result<Response<GetTaskResponseData>> {
         let token = self.get_token_sync(false)?;
         let response = self.get_task_sync(req, &token)?;
 
