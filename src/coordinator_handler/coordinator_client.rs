@@ -73,7 +73,6 @@ impl CoordinatorClient {
         }
     }
 
-
     /// Retrieves a token for authentication, optionally forcing a re-login.
     ///
     /// This function attempts to get the stored token if `force_relogin` is set to `false`.
