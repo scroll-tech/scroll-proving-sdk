@@ -33,8 +33,12 @@ impl Prover {
         }
 
         let mut provers = JoinSet::new();
-        for i in 0..self.n_workers {
-            provers.spawn(self.working_loop(i));
+        let self_arc = std::sync::Arc::new(self);
+        for i in 0..self_arc.n_workers {
+            let self_clone = std::sync::Arc::clone(&self_arc);
+            provers.spawn(async move {
+                self_clone.working_loop(i).await;
+            });
         }
 
         while let Some(res) = provers.join_next().await {
