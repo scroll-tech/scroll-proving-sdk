@@ -3,11 +3,11 @@ use super::{
     Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use crate::config::CoordinatorConfig;
+use core::time::Duration;
 use reqwest::{header::CONTENT_TYPE, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::Serialize;
-use core::time::Duration;
 
 pub struct Api {
     pub base_url: Url,
