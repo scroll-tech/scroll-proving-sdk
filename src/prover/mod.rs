@@ -1,6 +1,7 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
+use tokio::task::JoinSet;
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 use crate::{
@@ -25,31 +26,33 @@ pub struct Prover {
 }
 
 impl Prover {
-    pub fn run(self: std::sync::Arc<Self>) -> anyhow::Result<()> {
+    pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
         if self.circuit_type == CircuitType::Chunk {
             assert!(self.l2geth_client.is_some());
         }
 
-        for i in 0..self.n_workers {
-            let self_clone = std::sync::Arc::clone(&self);
-            thread::spawn(move || {
-                self_clone.working_loop(i);
+        let mut provers = JoinSet::new();
+        let self_arc = std::sync::Arc::new(self);
+        for i in 0..self_arc.n_workers {
+            let self_clone = std::sync::Arc::clone(&self_arc);
+            provers.spawn(async move {
+                self_clone.working_loop(i).await;
             });
         }
 
-        Ok(())
+        while provers.join_next().await.is_some() {}
     }
 
-    fn working_loop(&self, i: usize) {
+    async fn working_loop(&self, i: usize) {
         loop {
             let coordinator_client = &self.coordinator_clients[i];
             let prover_name = coordinator_client.prover_name.clone();
 
             log::info!("{:?}: getting task from coordinator", prover_name);
 
-            let get_task_request = self.build_get_task_request();
-            let coordinator_task = coordinator_client.get_task(&get_task_request);
+            let get_task_request = self.build_get_task_request().await;
+            let coordinator_task = coordinator_client.get_task(&get_task_request).await;
 
             if let Err(e) = coordinator_task {
                 log::error!("{:?}: failed to get task: {:?}", prover_name, e);
@@ -75,7 +78,7 @@ impl Prover {
             let coordinator_task_id = coordinator_task.task_id.clone();
             let task_type = coordinator_task.task_type;
 
-            let proving_input = match self.build_proving_input(&coordinator_task) {
+            let proving_input = match self.build_proving_input(&coordinator_task).await {
                 Ok(input) => input,
                 Err(e) => {
                     log::error!(
@@ -148,7 +151,7 @@ impl Prover {
                                 failure_type: None,
                                 failure_msg: None,
                             };
-                            match coordinator_client.submit_proof(&submit_proof_req) {
+                            match coordinator_client.submit_proof(&submit_proof_req).await {
                                 Ok(_) => {
                                     log::info!(
                                         "{:?}: proof submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
@@ -193,7 +196,7 @@ impl Prover {
                                 failure_type: Some(ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
                                 failure_msg: Some(task_err),
                             };
-                            match coordinator_client.submit_proof(&submit_proof_req) {
+                            match coordinator_client.submit_proof(&submit_proof_req).await {
                                 Ok(_) => {
                                     log::info!(
                                         "{:?}: proof_err submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
@@ -224,13 +227,14 @@ impl Prover {
         }
     }
 
-    fn build_get_task_request(&self) -> GetTaskRequest {
-        let prover_height = self.l2geth_client.as_ref().and_then(|l2geth_client| {
-            l2geth_client
-                .block_number_sync()
-                .ok()
-                .and_then(|block_number| block_number.as_number())
-        });
+    async fn build_get_task_request(&self) -> GetTaskRequest {
+        let prover_height = match &self.l2geth_client {
+            None => None,
+            Some(l2geth_client) => match l2geth_client.block_number().await {
+                Ok(block_number) => block_number.as_number(),
+                Err(_) => None,
+            },
+        };
 
         GetTaskRequest {
             task_types: vec![self.circuit_type],
@@ -238,7 +242,10 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+    async fn build_proving_input(
+        &self,
+        task: &GetTaskResponseData,
+    ) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
             task.task_type == self.circuit_type,
             "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
@@ -258,7 +265,8 @@ impl Prover {
                     .l2geth_client
                     .as_ref()
                     .unwrap()
-                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)?;
+                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
+                    .await?;
                 let input = serde_json::to_string(&traces)?;
 
                 Ok(ProveRequest {
