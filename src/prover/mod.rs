@@ -78,7 +78,7 @@ impl Prover {
             let coordinator_task_id = coordinator_task.task_id.clone();
             let task_type = coordinator_task.task_type;
 
-            let proving_input = match self.build_proving_input(&coordinator_task) {
+            let proving_input = match self.build_proving_input(&coordinator_task).await {
                 Ok(input) => input,
                 Err(e) => {
                     log::error!(
@@ -242,7 +242,10 @@ impl Prover {
         }
     }
 
-    fn build_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+    async fn build_proving_input(
+        &self,
+        task: &GetTaskResponseData,
+    ) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
             task.task_type == self.circuit_type,
             "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
@@ -262,7 +265,8 @@ impl Prover {
                     .l2geth_client
                     .as_ref()
                     .unwrap()
-                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)?;
+                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
+                    .await?;
                 let input = serde_json::to_string(&traces)?;
 
                 Ok(ProveRequest {
