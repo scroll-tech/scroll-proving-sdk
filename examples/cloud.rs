@@ -4,7 +4,9 @@ use std::sync::Arc;
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
     prover::{
-        proving_service::{ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse},
+        proving_service::{
+            GetVkRequest, ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse,
+        },
         ProverBuilder, ProvingService,
     },
     utils::init_tracing,
@@ -24,14 +26,17 @@ struct CloudProver {
 }
 
 impl ProvingService for CloudProver {
+    fn is_local(&self) -> bool {
+        false
+    }
+    fn get_vk(&self, req: GetVkRequest) -> String {
+        todo!()
+    }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
     fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
-    }
-    fn is_local(&self) -> bool {
-        false
     }
 }
 

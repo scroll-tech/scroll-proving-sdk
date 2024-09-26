@@ -17,6 +17,7 @@ const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
     circuit_type: CircuitType,
+    circuit_version: String,
     coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
@@ -262,27 +263,23 @@ impl Prover {
 
                 Ok(ProveRequest {
                     circuit_type: task.task_type,
-                    circuit_version: "".to_string(), // TODO: circuit_version
+                    circuit_version: self.circuit_version.clone(),
                     hard_fork_name: task.hard_fork_name.clone(),
                     input,
                 })
             }
-            CircuitType::Batch => {
-                Ok(ProveRequest {
-                    circuit_type: task.task_type,
-                    circuit_version: "".to_string(), // TODO: circuit_version
-                    hard_fork_name: task.hard_fork_name.clone(),
-                    input: task.task_data.clone(),
-                })
-            }
-            CircuitType::Bundle => {
-                Ok(ProveRequest {
-                    circuit_type: task.task_type,
-                    circuit_version: "".to_string(), // TODO: circuit_version
-                    hard_fork_name: task.hard_fork_name.clone(),
-                    input: task.task_data.clone(),
-                })
-            }
+            CircuitType::Batch => Ok(ProveRequest {
+                circuit_type: task.task_type,
+                circuit_version: self.circuit_version.clone(),
+                hard_fork_name: task.hard_fork_name.clone(),
+                input: task.task_data.clone(),
+            }),
+            CircuitType::Bundle => Ok(ProveRequest {
+                circuit_type: task.task_type,
+                circuit_version: self.circuit_version.clone(),
+                hard_fork_name: task.hard_fork_name.clone(),
+                input: task.task_data.clone(),
+            }),
         }
     }
 }

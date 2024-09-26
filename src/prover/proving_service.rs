@@ -1,9 +1,15 @@
 use super::CircuitType;
 
 pub trait ProvingService {
+    fn is_local(&self) -> bool;
+    fn get_vk(&self, req: GetVkRequest) -> String; // TODO: Result<String, Error>
     fn prove(&self, req: ProveRequest) -> ProveResponse; // TODO: Result<ProveResponse, Error>
     fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse; // TODO: Result<QueryTaskResponse, Error>
-    fn is_local(&self) -> bool;
+}
+
+pub struct GetVkRequest {
+    pub circuit_type: CircuitType,
+    pub circuit_version: String,
 }
 
 pub struct ProveRequest {
@@ -17,6 +23,7 @@ pub struct ProveResponse {
     pub task_id: String,
     pub circuit_type: CircuitType,
     pub circuit_version: String,
+    pub hard_fork_name: String,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,
@@ -34,8 +41,9 @@ pub struct QueryTaskRequest {
 
 pub struct QueryTaskResponse {
     pub task_id: String,
-    pub circuit_version: String,
     pub circuit_type: CircuitType,
+    pub circuit_version: String,
+    pub hard_fork_name: String,
     pub status: TaskStatus,
     pub created_at: u64,
     pub started_at: Option<u64>,

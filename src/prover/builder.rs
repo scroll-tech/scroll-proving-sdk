@@ -2,7 +2,10 @@ use super::CircuitType;
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
-    prover::{Prover, ProvingService},
+    prover::{
+        proving_service::{GetVkRequest, ProvingService},
+        Prover,
+    },
     tracing_handler::L2gethClient,
 };
 use std::path::PathBuf;
@@ -40,6 +43,16 @@ impl ProverBuilder {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
+        let get_vk_request = GetVkRequest {
+            circuit_type: self.cfg.prover.circuit_type,
+            circuit_version: self.cfg.prover.circuit_version.clone(),
+        };
+        let vk = self
+            .proving_service
+            .as_ref()
+            .unwrap()
+            .get_vk(get_vk_request);
+
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 let key_path = PathBuf::from(&self.cfg.keys_dir).join(i.to_string());
@@ -53,6 +66,8 @@ impl ProverBuilder {
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_type,
+                    vec![vk.clone()],
+                    self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
                 )
@@ -67,6 +82,7 @@ impl ProverBuilder {
 
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
+            circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
             l2geth_client,
             proving_service: self.proving_service.unwrap(),
