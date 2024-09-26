@@ -2,23 +2,33 @@ use super::{
     ChallengeResponseData, GetTaskRequest, GetTaskResponseData, LoginRequest, LoginResponseData,
     Response, SubmitProofRequest, SubmitProofResponseData,
 };
+use crate::config::CoordinatorConfig;
+use core::time::Duration;
 use reqwest::{header::CONTENT_TYPE, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::Serialize;
 
 pub struct Api {
     pub base_url: Url,
+    send_timeout: Duration,
     pub client: ClientWithMiddleware,
 }
 
 impl Api {
-    pub fn new(base_url: &str) -> anyhow::Result<Self> {
+    pub fn new(cfg: CoordinatorConfig) -> anyhow::Result<Self> {
+        let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+            .build_with_max_retries(cfg.retry_count);
+
         let client = ClientBuilder::new(reqwest::Client::new())
-            // .with(RetryTransientMiddleware::new_with_policy(retry_policy)) // TODO: retry policy
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .build();
 
         Ok(Self {
-            base_url: Url::parse(base_url)?,
+            base_url: Url::parse(&cfg.base_url)?,
+            send_timeout: core::time::Duration::from_secs(cfg.connection_timeout_sec),
             client,
         })
     }
@@ -47,7 +57,7 @@ impl Api {
             .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token)
             .body(request_body)
-            // .timeout(self.send_timeout) // TODO: send_timeout
+            .timeout(self.send_timeout)
             .send()
             .await?;
 
@@ -76,7 +86,7 @@ impl Api {
             .client
             .get(url)
             .header(CONTENT_TYPE, "application/json")
-            // .timeout(self.send_timeout) // TODO: send_timeout
+            .timeout(self.send_timeout)
             .send()
             .await?;
 
