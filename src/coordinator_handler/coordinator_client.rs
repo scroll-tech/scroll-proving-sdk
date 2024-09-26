@@ -3,7 +3,7 @@ use super::{
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
-use tokio::sync::MutexGuard;
+use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
@@ -12,7 +12,7 @@ pub struct CoordinatorClient {
     pub prover_name: String,
     key_signer: KeySigner,
     api: Api,
-    token: tokio::sync::Mutex<Option<String>>,
+    token: Mutex<Option<String>>,
 }
 
 impl CoordinatorClient {
@@ -32,7 +32,7 @@ impl CoordinatorClient {
             prover_name,
             key_signer,
             api,
-            token: tokio::sync::Mutex::new(None),
+            token: Mutex::new(None),
         };
         Ok(client)
     }
