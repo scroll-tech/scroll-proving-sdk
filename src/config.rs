@@ -15,6 +15,9 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoordinatorConfig {
     pub base_url: String,
+    pub retry_count: u32,
+    pub retry_wait_time_sec: u64,
+    pub connection_timeout_sec: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
