@@ -29,7 +29,7 @@ impl CoordinatorClient {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
-        let api = Api::new(&cfg.base_url)?; // TODO: retry policy
+        let api = Api::new(cfg)?;
         let client = Self {
             circuit_type,
             vks,
