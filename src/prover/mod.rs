@@ -151,7 +151,7 @@ impl Prover {
                                 failure_type: None,
                                 failure_msg: None,
                             };
-                            match coordinator_client.submit_proof(&submit_proof_req) {
+                            match coordinator_client.submit_proof(&submit_proof_req).await {
                                 Ok(_) => {
                                     log::info!(
                                         "{:?}: proof submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",
@@ -196,7 +196,7 @@ impl Prover {
                                 failure_type: Some(ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
                                 failure_msg: Some(task_err),
                             };
-                            match coordinator_client.submit_proof(&submit_proof_req) {
+                            match coordinator_client.submit_proof(&submit_proof_req).await {
                                 Ok(_) => {
                                     log::info!(
                                         "{:?}: proof_err submitted. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, proving_service_task_id: {:?}",

@@ -47,51 +47,32 @@ impl CoordinatorClient {
         &self,
         req: &GetTaskRequest,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
-        let token = self.get_token_sync(false)?;
-        let response = self.get_task_sync(req, &token)?;
+        let token = self.get_token(false).await?;
+        let response = self.api.get_task(req, &token).await?;
 
         if response.errcode == ErrorCode::ErrJWTTokenExpired {
-            let token = self.get_token_sync(true)?;
-            self.get_task_sync(req, &token)
+            let token = self.get_token(true).await?;
+            self.api.get_task(req, &token).await
         } else {
             Ok(response)
         }
     }
 
-    pub fn submit_proof(
+    pub async fn submit_proof(
         &self,
         req: &SubmitProofRequest,
     ) -> anyhow::Result<Response<SubmitProofResponseData>> {
-        let token = self.get_token_sync(false)?;
-        let response = self.submit_proof_sync(req, &token)?;
+        let token = self.get_token(false).await?;
+        let response = self.api.submit_proof(req, &token).await?;
 
         if response.errcode == ErrorCode::ErrJWTTokenExpired {
-            let token = self.get_token_sync(true)?;
-            self.submit_proof_sync(req, &token)
+            let token = self.get_token(true).await?;
+            self.api.submit_proof(req, &token).await
         } else {
             Ok(response)
         }
     }
 
-    fn get_task_sync(
-        &self,
-        req: &GetTaskRequest,
-        token: &String,
-    ) -> anyhow::Result<Response<GetTaskResponseData>> {
-        self.rt.block_on(self.api.get_task(req, token))
-    }
-
-    fn submit_proof_sync(
-        &self,
-        req: &SubmitProofRequest,
-        token: &String,
-    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
-        self.rt.block_on(self.api.submit_proof(req, token))
-    }
-
-    fn get_token_sync(&self, force_relogin: bool) -> anyhow::Result<String> {
-        self.rt.block_on(self.get_token_async(force_relogin))
-    }
 
     /// Retrieves a token for authentication, optionally forcing a re-login.
     ///
@@ -99,7 +80,7 @@ impl CoordinatorClient {
     ///
     /// If the token is expired, `force_relogin` is set to `true`, or a login was never performed
     /// before, it will authenticate and fetch a new token.
-    async fn get_token_async(&self, force_relogin: bool) -> anyhow::Result<String> {
+    async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
         let token_guard = self
             .token
             .lock()
@@ -110,10 +91,10 @@ impl CoordinatorClient {
             _ => (),
         }
 
-        self.login_async(token_guard).await
+        self.login(token_guard).await
     }
 
-    async fn login_async<'t>(
+    async fn login<'t>(
         &self,
         mut token_guard: MutexGuard<'t, Option<String>>,
     ) -> anyhow::Result<String> {
