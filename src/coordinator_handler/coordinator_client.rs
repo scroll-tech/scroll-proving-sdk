@@ -75,10 +75,8 @@ impl CoordinatorClient {
     /// before, it will authenticate and fetch a new token.
     async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
         let token_guard = self.token.lock().await;
-        // .expect("Mutex locking only occurs within `get_token` fn, so there can be no double `lock` for one thread");
 
-        match token_guard.as_deref() {
-            // match *token_guard {
+        match *token_guard {
             Some(ref token) if !force_relogin => return Ok(token.to_string()),
             _ => (),
         }
