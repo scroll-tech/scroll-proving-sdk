@@ -1,11 +1,11 @@
 use clap::Parser;
-use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
     prover::{
         proving_service::{
-            GetVkRequest, ProveRequest, ProveResponse, QueryTaskRequest, QueryTaskResponse,
+            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
+            QueryTaskResponse,
         },
         ProverBuilder, ProvingService,
     },
@@ -26,7 +26,7 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    fn get_vk(&self, req: GetVkRequest) -> String {
+    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
     fn prove(&self, req: ProveRequest) -> ProveResponse {
