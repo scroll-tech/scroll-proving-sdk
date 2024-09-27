@@ -2,14 +2,19 @@ use super::CircuitType;
 
 pub trait ProvingService {
     fn is_local(&self) -> bool;
-    fn get_vk(&self, req: GetVkRequest) -> String; // TODO: Result<String, Error>
-    fn prove(&self, req: ProveRequest) -> ProveResponse; // TODO: Result<ProveResponse, Error>
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse; // TODO: Result<QueryTaskResponse, Error>
+    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse;
+    fn prove(&self, req: ProveRequest) -> ProveResponse;
+    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
 pub struct GetVkRequest {
     pub circuit_type: CircuitType,
     pub circuit_version: String,
+}
+
+pub struct GetVkResponse {
+    pub vk: String,
+    pub error: Option<String>,
 }
 
 pub struct ProveRequest {
