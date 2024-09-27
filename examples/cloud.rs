@@ -21,7 +21,7 @@ struct Args {
 }
 
 struct CloudProver {
-    endpoint: String,
+    base_url: String,
     api_key: String,
 }
 
@@ -43,7 +43,7 @@ impl ProvingService for CloudProver {
 impl CloudProver {
     pub fn new(cfg: CloudProverConfig) -> Self {
         Self {
-            endpoint: cfg.endpoint,
+            base_url: cfg.base_url,
             api_key: cfg.api_key,
         }
     }

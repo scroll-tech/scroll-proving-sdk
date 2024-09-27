@@ -36,7 +36,7 @@ pub struct ProverConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CloudProverConfig {
-    pub endpoint: String,
+    pub base_url: String,
     pub api_key: String,
 }
 

@@ -47,11 +47,14 @@ impl ProverBuilder {
             circuit_type: self.cfg.prover.circuit_type,
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };
-        let vk = self
+        let get_vk_response = self
             .proving_service
             .as_ref()
             .unwrap()
             .get_vk(get_vk_request);
+        if let Some(error) = get_vk_response.error {
+            anyhow::bail!("failed to get vk: {}", error);
+        }
 
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
@@ -66,7 +69,7 @@ impl ProverBuilder {
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_type,
-                    vec![vk.clone()],
+                    vec![get_vk_response.vk.clone()],
                     self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
