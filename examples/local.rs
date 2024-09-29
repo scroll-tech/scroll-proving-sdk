@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
@@ -53,5 +54,7 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(local_prover))
         .build()?;
 
-    Arc::new(prover).run()
+    Arc::new(prover).run()?;
+
+    loop {}
 }
