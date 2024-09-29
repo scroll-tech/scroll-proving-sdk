@@ -276,9 +276,9 @@ impl CloudProver {
                     CircuitType::Bundle => "bundle_prover",
                     CircuitType::Undefined => unreachable!("circuit type is undefined"),
                 };
-                format!("circuit/scroll-tech/{}:{}", circuit, THIS_CIRCUIT_VERSION)
+                format!("circuit/scroll-tech/{}:{}/", circuit, THIS_CIRCUIT_VERSION)
             }
-            MethodClass::Proof(id) => format!("proof/{}", id),
+            MethodClass::Proof(id) => format!("proof/{}/", id),
         };
 
         let mut url = self.base_url.join(&method_base)?.join(method)?;
