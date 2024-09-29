@@ -6,6 +6,7 @@ use reqwest::{
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
@@ -275,7 +276,7 @@ impl CloudProver {
                     CircuitType::Bundle => "bundle_prover",
                     CircuitType::Undefined => unreachable!("circuit type is undefined"),
                 };
-                format!("circuit/{}:{}", circuit, THIS_CIRCUIT_VERSION)
+                format!("circuit/scroll-tech/{}:{}", circuit, THIS_CIRCUIT_VERSION)
             }
             MethodClass::Proof(id) => format!("proof/{}", id),
         };
@@ -365,8 +366,7 @@ impl CloudProver {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -376,7 +376,5 @@ async fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(cloud_prover))
         .build()?;
 
-    prover.run().await;
-
-    Ok(())
+    Arc::new(prover).run()
 }

@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
