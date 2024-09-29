@@ -83,6 +83,19 @@ enum MethodClass {
     Proof(String),
 }
 
+fn reformat_vk(vk_old: String) -> String {
+    log::debug!("vk_old: {:?}", vk_old);
+
+    // decode base64 without padding
+    let vk = base64::decode_config(vk_old, base64::URL_SAFE_NO_PAD).unwrap(); // TODO: error handling
+    // encode with padding
+    let vk_new = base64::encode_config(vk, base64::STANDARD);
+
+    log::debug!("vk_new: {:?}", vk_new);
+
+    vk_new
+}
+
 impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
@@ -111,7 +124,7 @@ impl ProvingService for CloudProver {
                 None,
             )) {
             Ok(resp) => GetVkResponse {
-                vk: resp.verification_key.verification_key,
+                vk: reformat_vk(resp.verification_key.verification_key),
                 error: None,
             },
             Err(e) => GetVkResponse {
