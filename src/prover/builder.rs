@@ -62,7 +62,8 @@ impl ProverBuilder {
                 KeySigner::new(&key_path)
             })
             .collect();
-        let key_signers = key_signers?;
+        let key_signers =
+            key_signers.map_err(|e| anyhow::anyhow!("cannot create key_signer, err: {e}"))?;
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {

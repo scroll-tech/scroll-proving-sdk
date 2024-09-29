@@ -376,5 +376,7 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(cloud_prover))
         .build()?;
 
-    Arc::new(prover).run()
+    Arc::new(prover).run()?;
+
+    loop {}
 }
