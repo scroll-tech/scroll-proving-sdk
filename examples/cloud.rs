@@ -83,17 +83,17 @@ enum MethodClass {
     Proof(String),
 }
 
-fn reformat_vk(vk_old: String) -> String {
+fn reformat_vk(vk_old: String) -> anyhow::Result<String> {
     log::debug!("vk_old: {:?}", vk_old);
 
     // decode base64 without padding
-    let vk = base64::decode_config(vk_old, base64::URL_SAFE_NO_PAD).unwrap(); // TODO: error handling
+    let vk = base64::decode_config(vk_old, base64::URL_SAFE_NO_PAD)?;
     // encode with padding
     let vk_new = base64::encode_config(vk, base64::STANDARD);
 
     log::debug!("vk_new: {:?}", vk_new);
 
-    vk_new
+    Ok(vk_new)
 }
 
 impl ProvingService for CloudProver {
@@ -123,9 +123,12 @@ impl ProvingService for CloudProver {
                 "detail",
                 None,
             )) {
-            Ok(resp) => GetVkResponse {
-                vk: reformat_vk(resp.verification_key.verification_key),
-                error: None,
+            Ok(resp) => match reformat_vk(resp.verification_key.verification_key) {
+                Ok(vk) => GetVkResponse { vk, error: None },
+                Err(e) => GetVkResponse {
+                    vk: String::new(),
+                    error: Some(e.to_string()),
+                },
             },
             Err(e) => GetVkResponse {
                 vk: String::new(),
