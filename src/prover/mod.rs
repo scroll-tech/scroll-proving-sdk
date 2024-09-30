@@ -225,11 +225,11 @@ impl Prover {
     }
 
     fn build_get_task_request(&self) -> GetTaskRequest {
-        let prover_height = self.l2geth_client.as_ref().and_then(|l2geth_client| {
+        let prover_height: Option<u64> = self.l2geth_client.as_ref().and_then(|l2geth_client| {
             l2geth_client
                 .block_number_sync()
                 .ok()
-                .and_then(|block_number| block_number.as_number())
+                .and_then(|block_number| block_number.as_number().map(|num| num.as_u64()))
         });
 
         GetTaskRequest {

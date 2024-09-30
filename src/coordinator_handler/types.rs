@@ -60,7 +60,7 @@ pub type ChallengeResponseData = LoginResponseData;
 #[derive(Default, Serialize, Deserialize)]
 pub struct GetTaskRequest {
     pub task_types: Vec<CircuitType>,
-    pub prover_height: Option<U64>,
+    pub prover_height: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
