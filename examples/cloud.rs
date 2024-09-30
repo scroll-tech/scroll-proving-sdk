@@ -44,7 +44,7 @@ struct VerificationKey {
 struct SindriTaskStatusResponse {
     pub proof_id: String,
     pub project_name: String,
-    pub perfoman_verify: bool,
+    pub perform_verify: bool,
     pub status: SindriTaskStatus,
     pub compute_time_sec: Option<u64>,
     pub queue_time_sec: Option<u64>,
