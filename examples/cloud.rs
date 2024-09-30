@@ -1,10 +1,12 @@
 use clap::Parser;
+use core::time::Duration;
 use prover_darwin_v2::ChunkProof;
 use reqwest::{
     header::{CONTENT_ENCODING, CONTENT_TYPE},
     Url,
 };
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,6 +34,7 @@ struct Args {
 struct CloudProver {
     base_url: Url,
     api_key: String,
+    send_timeout: Duration,
     client: ClientWithMiddleware,
     rt: tokio::runtime::Runtime,
 }
@@ -240,20 +243,21 @@ impl ProvingService for CloudProver {
             Err(e) => {
                 log::error!("failed to query proof: {:?}", e);
                 QueryTaskResponse {
-                task_id: req.task_id,
-                circuit_type: CircuitType::Undefined,
-                circuit_version: "".to_string(),
-                hard_fork_name: "".to_string(),
-                status: TaskStatus::Queued,
-                created_at: 0,
-                started_at: None,
-                finished_at: None,
-                // compute_time_sec: None,
-                input: None,
-                proof: None,
-                vk: None,
-                error: Some(anyhow::anyhow!("failed to query proof: {e}").to_string()),
-            }},
+                    task_id: req.task_id,
+                    circuit_type: CircuitType::Undefined,
+                    circuit_version: "".to_string(),
+                    hard_fork_name: "".to_string(),
+                    status: TaskStatus::Queued,
+                    created_at: 0,
+                    started_at: None,
+                    finished_at: None,
+                    // compute_time_sec: None,
+                    input: None,
+                    proof: None,
+                    vk: None,
+                    error: Some(anyhow::anyhow!("failed to query proof: {e}").to_string()),
+                }
+            }
         }
     }
 }
@@ -262,8 +266,12 @@ const THIS_CIRCUIT_VERSION: &str = "v0.13.1";
 
 impl CloudProver {
     pub fn new(cfg: CloudProverConfig) -> Self {
+        let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+            .build_with_max_retries(cfg.retry_count);
         let client = ClientBuilder::new(reqwest::Client::new())
-            // .with(RetryTransientMiddleware::new_with_policy(retry_policy)) // TODO: retry policy
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .build();
 
         let base_url = Url::parse(&cfg.base_url).expect("cannot parse cloud prover base_url");
@@ -276,6 +284,7 @@ impl CloudProver {
         Self {
             base_url,
             api_key: cfg.api_key,
+            send_timeout: Duration::from_secs(cfg.connection_timeout_sec),
             client,
             rt,
         }
@@ -360,7 +369,7 @@ impl CloudProver {
         };
 
         let resp_builder = resp_builder
-            // .timeout(self.send_timeout) // TODO: timeout
+            .timeout(self.send_timeout)
             .header(CONTENT_TYPE, "application/json")
             .header(CONTENT_ENCODING, "gzip")
             .bearer_auth(self.api_key.clone());
