@@ -50,7 +50,8 @@ impl Api {
         let url = self.build_url(method)?;
         let request_body = serde_json::to_string(req)?;
 
-        log::info!("[coordinator client], {method}, request: {request_body}");
+        log::info!("[coordinator client], {method}, sent request");
+        log::debug!("[coordinator client], {method}, request: {request_body}");
         let response = self
             .client
             .post(url)
@@ -62,10 +63,10 @@ impl Api {
             .await?;
 
         if response.status() != http::status::StatusCode::OK {
-            log::error!(
-                "[coordinator client], {method}, status not ok: {}",
-                response.status()
-            );
+            // log::error!(
+            //     "[coordinator client], {method}, status not ok: {}",
+            //     response.status()
+            // );
             anyhow::bail!(
                 "[coordinator client], {method}, status not ok: {}",
                 response.status()
@@ -74,7 +75,8 @@ impl Api {
 
         let response_body = response.text().await?;
 
-        log::info!("[coordinator client], {method}, response: {response_body}");
+        log::info!("[coordinator client], {method}, received response");
+        log::debug!("[coordinator client], {method}, response: {response_body}");
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 

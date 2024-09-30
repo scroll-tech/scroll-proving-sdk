@@ -365,20 +365,16 @@ impl CloudProver {
         let response = resp_builder.send().await?;
 
         let status = response.status();
-        if !(status >= http::status::StatusCode::OK && status <= http::status::StatusCode::ACCEPTED){
-            log::error!(
-                "[sindir client], {method}, status not ok: {}",
-                status
-            );
-            anyhow::bail!(
-                "[sindir client], {method}, status not ok: {}",
-                status
-            )
+        if !(status >= http::status::StatusCode::OK && status <= http::status::StatusCode::ACCEPTED)
+        {
+            // log::error!("[sindir client], {method}, status not ok: {}", status);
+            anyhow::bail!("[sindir client], {method}, status not ok: {}", status)
         }
 
         let response_body = response.text().await?;
 
-        log::info!("[sindir client], {method}, response: {response_body}");
+        log::info!("[sindir client], {method}, received response");
+        log::debug!("[sindir client], {method}, response: {response_body}");
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 }
