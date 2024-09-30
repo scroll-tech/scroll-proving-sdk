@@ -1,4 +1,5 @@
 use clap::Parser;
+use prover_darwin_v2::ChunkProof;
 use reqwest::{
     header::{CONTENT_ENCODING, CONTENT_TYPE},
     Url,
@@ -49,8 +50,8 @@ struct SindriTaskStatusResponse {
     // pub compute_time_sec: Option<u64>,
     // pub queue_time_sec: Option<u64>,
     pub verification_key: Option<VerificationKey>,
-    pub proof: Option<String>,
-    pub public: Option<String>,
+    pub proof: Option<ChunkProof>, // TODO: support other proof types
+    // pub public: Option<String>, // TODO: fix me
     pub warnings: Option<Vec<String>>,
     pub error: Option<String>,
 }
@@ -185,7 +186,7 @@ impl ProvingService for CloudProver {
                 finished_at: None, // TODO:
                 // compute_time_sec: resp.compute_time_sec,
                 input: Some(req.input.clone()),
-                proof: resp.proof,
+                proof: serde_json::to_string(&resp.proof).ok(),
                 vk: resp.verification_key.map(|vk| vk.verification_key),
                 error: resp.error,
             },
@@ -232,7 +233,7 @@ impl ProvingService for CloudProver {
                 finished_at: None, // TODO:
                 // compute_time_sec: resp.compute_time_sec,
                 input: None,
-                proof: resp.proof,
+                proof: serde_json::to_string(&resp.proof).ok(),
                 vk: resp.verification_key.map(|vk| vk.verification_key),
                 error: resp.error,
             },
