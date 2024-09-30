@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
@@ -43,8 +44,7 @@ impl LocalProver {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(local_prover))
         .build()?;
 
-    prover.run().await;
+    Arc::new(prover).run()?;
 
-    Ok(())
+    loop {}
 }
