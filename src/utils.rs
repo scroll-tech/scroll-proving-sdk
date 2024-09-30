@@ -5,7 +5,7 @@ const SDK_VERSION: &str = "v0.0.1";
 pub fn get_version(circuit_version: &str) -> String {
     // format!("{}-{}", SDK_VERSION, circuit_version)
     // format!("{}-{}", "v4.4.43", circuit_version)
-    "v4.4.59-bce3383-6f7b46a-e5ddf67".to_string()
+    "v4.4.56-bce3383-6f7b46a-e5ddf67".to_string()
 }
 
 pub fn init_tracing() {
