@@ -46,8 +46,8 @@ struct SindriTaskStatusResponse {
     pub project_name: String,
     pub perform_verify: bool,
     pub status: SindriTaskStatus,
-    pub compute_time_sec: Option<u64>,
-    pub queue_time_sec: Option<u64>,
+    // pub compute_time_sec: Option<u64>,
+    // pub queue_time_sec: Option<u64>,
     pub verification_key: Option<VerificationKey>,
     pub proof: Option<String>,
     pub public: Option<String>,
@@ -148,7 +148,7 @@ impl ProvingService for CloudProver {
                 created_at: 0,
                 started_at: None,
                 finished_at: None,
-                compute_time_sec: None,
+                // compute_time_sec: None,
                 input: Some(req.input.clone()),
                 proof: None,
                 vk: None,
@@ -183,7 +183,7 @@ impl ProvingService for CloudProver {
                 created_at: 0,     // TODO:
                 started_at: None,  // TODO:
                 finished_at: None, // TODO:
-                compute_time_sec: resp.compute_time_sec,
+                // compute_time_sec: resp.compute_time_sec,
                 input: Some(req.input.clone()),
                 proof: resp.proof,
                 vk: resp.verification_key.map(|vk| vk.verification_key),
@@ -198,7 +198,7 @@ impl ProvingService for CloudProver {
                 created_at: 0,
                 started_at: None,
                 finished_at: None,
-                compute_time_sec: None,
+                // compute_time_sec: None,
                 input: Some(req.input.clone()),
                 proof: None,
                 vk: None,
@@ -230,13 +230,15 @@ impl ProvingService for CloudProver {
                 created_at: 0,     // TODO:
                 started_at: None,  // TODO:
                 finished_at: None, // TODO:
-                compute_time_sec: resp.compute_time_sec,
+                // compute_time_sec: resp.compute_time_sec,
                 input: None,
                 proof: resp.proof,
                 vk: resp.verification_key.map(|vk| vk.verification_key),
                 error: resp.error,
             },
-            Err(e) => QueryTaskResponse {
+            Err(e) => {
+                log::error!("failed to query proof: {:?}", e);
+                QueryTaskResponse {
                 task_id: req.task_id,
                 circuit_type: CircuitType::Undefined,
                 circuit_version: "".to_string(),
@@ -245,12 +247,12 @@ impl ProvingService for CloudProver {
                 created_at: 0,
                 started_at: None,
                 finished_at: None,
-                compute_time_sec: None,
+                // compute_time_sec: None,
                 input: None,
                 proof: None,
                 vk: None,
                 error: Some(anyhow::anyhow!("failed to query proof: {e}").to_string()),
-            },
+            }},
         }
     }
 }
