@@ -202,7 +202,7 @@ impl ProvingService for CloudProver {
                 input: Some(req.input.clone()),
                 proof: None,
                 vk: None,
-                error: Some("failed to request proof".to_string()),
+                error: Some(anyhow::anyhow!("failed to request proof: {e}").to_string()),
             },
         }
     }
@@ -249,7 +249,7 @@ impl ProvingService for CloudProver {
                 input: None,
                 proof: None,
                 vk: None,
-                error: Some("failed to query proof".to_string()),
+                error: Some(anyhow::anyhow!("failed to query proof: {e}").to_string()),
             },
         }
     }
