@@ -38,6 +38,9 @@ pub struct ProverConfig {
 pub struct CloudProverConfig {
     pub base_url: String,
     pub api_key: String,
+    pub retry_count: u32,
+    pub retry_wait_time_sec: u64,
+    pub connection_timeout_sec: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

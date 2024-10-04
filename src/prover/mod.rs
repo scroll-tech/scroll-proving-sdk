@@ -234,7 +234,7 @@ impl Prover {
         let prover_height = match &self.l2geth_client {
             None => None,
             Some(l2geth_client) => match l2geth_client.block_number().await {
-                Ok(block_number) => block_number.as_number(),
+                Ok(block_number) => block_number.as_number().map(|num| num.as_u64()),
                 Err(_) => None,
             },
         };
