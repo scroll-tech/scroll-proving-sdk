@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Parser;
 use core::time::Duration;
 use prover_darwin_v2::ChunkProof;
@@ -100,12 +101,13 @@ fn reformat_vk(vk_old: String) -> anyhow::Result<String> {
     Ok(vk_new)
 }
 
+#[async_trait]
 impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
 
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         if req.circuit_version != THIS_CIRCUIT_VERSION {
             return GetVkResponse {
                 vk: String::new(),
@@ -141,7 +143,7 @@ impl ProvingService for CloudProver {
         }
     }
 
-    fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&self, req: ProveRequest) -> ProveResponse {
         if req.circuit_version != THIS_CIRCUIT_VERSION {
             return ProveResponse {
                 task_id: String::new(),
@@ -211,7 +213,7 @@ impl ProvingService for CloudProver {
         }
     }
 
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         let query_params: HashMap<String, String> = HashMap::from([
             ("include_proof".to_string(), "true".to_string()),
             ("include_public".to_string(), "true".to_string()),
@@ -391,7 +393,8 @@ impl CloudProver {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -399,9 +402,10 @@ fn main() -> anyhow::Result<()> {
     let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
-        .build()?;
+        .build()
+        .await?;
 
-    Arc::new(prover).run()?;
+    prover.run().await;
 
-    loop {}
+    Ok(())
 }

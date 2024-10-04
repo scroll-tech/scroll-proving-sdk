@@ -31,7 +31,7 @@ impl ProverBuilder {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<Prover> {
+    pub async fn build(self) -> anyhow::Result<Prover> {
         if self.proving_service.is_none() {
             anyhow::bail!("proving_service is not provided");
         }
@@ -51,7 +51,8 @@ impl ProverBuilder {
             .proving_service
             .as_ref()
             .unwrap()
-            .get_vk(get_vk_request);
+            .get_vk(get_vk_request)
+            .await;
         if let Some(error) = get_vk_response.error {
             anyhow::bail!("failed to get vk: {}", error);
         }

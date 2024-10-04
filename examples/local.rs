@@ -1,5 +1,5 @@
+use async_trait::async_trait;
 use clap::Parser;
-use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{Config, LocalProverConfig},
@@ -23,17 +23,18 @@ struct Args {
 
 struct LocalProver {}
 
+#[async_trait]
 impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -44,7 +45,8 @@ impl LocalProver {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -52,9 +54,10 @@ fn main() -> anyhow::Result<()> {
     let local_prover = LocalProver::new(cfg.prover.local.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(local_prover))
-        .build()?;
+        .build()
+        .await?;
 
-    Arc::new(prover).run()?;
+    prover.run().await;
 
-    loop {}
+    Ok(())
 }
