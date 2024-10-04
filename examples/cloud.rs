@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Parser;
 
 use scroll_proving_sdk::{
@@ -25,17 +26,18 @@ struct CloudProver {
     api_key: String,
 }
 
+#[async_trait]
 impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -58,7 +60,8 @@ async fn main() -> anyhow::Result<()> {
     let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
-        .build()?;
+        .build()
+        .await?;
 
     prover.run().await;
 

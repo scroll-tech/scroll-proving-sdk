@@ -93,7 +93,7 @@ impl Prover {
                 }
             };
 
-            let proving_task = self.proving_service.prove(proving_input);
+            let proving_task = self.proving_service.prove(proving_input).await;
             if proving_task.error.is_some() {
                 log::error!(
                     "{:?}: failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
@@ -107,9 +107,12 @@ impl Prover {
             } else {
                 let proving_service_task_id = proving_task.task_id;
                 loop {
-                    let task = self.proving_service.query_task(QueryTaskRequest {
-                        task_id: proving_service_task_id.clone(),
-                    });
+                    let task = self
+                        .proving_service
+                        .query_task(QueryTaskRequest {
+                            task_id: proving_service_task_id.clone(),
+                        })
+                        .await;
                     match task.status {
                         TaskStatus::Queued => {
                             log::info!(

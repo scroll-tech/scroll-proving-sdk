@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Parser;
 
 use scroll_proving_sdk::{
@@ -22,17 +23,18 @@ struct Args {
 
 struct LocalProver {}
 
+#[async_trait]
 impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -52,7 +54,8 @@ async fn main() -> anyhow::Result<()> {
     let local_prover = LocalProver::new(cfg.prover.local.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(local_prover))
-        .build()?;
+        .build()
+        .await?;
 
     prover.run().await;
 
