@@ -3,8 +3,7 @@ use super::{
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
 use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
-use std::sync::{Mutex, MutexGuard};
-use tokio::runtime::Runtime;
+use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
     circuit_type: CircuitType,
@@ -14,7 +13,6 @@ pub struct CoordinatorClient {
     key_signer: KeySigner,
     api: Api,
     token: Mutex<Option<String>>,
-    rt: Runtime,
 }
 
 impl CoordinatorClient {
@@ -26,9 +24,6 @@ impl CoordinatorClient {
         prover_name: String,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
         let api = Api::new(cfg)?;
         let client = Self {
             circuit_type,
@@ -38,56 +33,38 @@ impl CoordinatorClient {
             key_signer,
             api,
             token: Mutex::new(None),
-            rt,
         };
         Ok(client)
     }
 
-    pub fn get_task(&self, req: &GetTaskRequest) -> anyhow::Result<Response<GetTaskResponseData>> {
-        let token = self.get_token_sync(false)?;
-        let response = self.get_task_sync(req, &token)?;
-
-        if response.errcode == ErrorCode::ErrJWTTokenExpired {
-            let token = self.get_token_sync(true)?;
-            self.get_task_sync(req, &token)
-        } else {
-            Ok(response)
-        }
-    }
-
-    pub fn submit_proof(
-        &self,
-        req: &SubmitProofRequest,
-    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
-        let token = self.get_token_sync(false)?;
-        let response = self.submit_proof_sync(req, &token)?;
-
-        if response.errcode == ErrorCode::ErrJWTTokenExpired {
-            let token = self.get_token_sync(true)?;
-            self.submit_proof_sync(req, &token)
-        } else {
-            Ok(response)
-        }
-    }
-
-    fn get_task_sync(
+    pub async fn get_task(
         &self,
         req: &GetTaskRequest,
-        token: &String,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
-        self.rt.block_on(self.api.get_task(req, token))
+        let token = self.get_token(false).await?;
+        let response = self.api.get_task(req, &token).await?;
+
+        if response.errcode == ErrorCode::ErrJWTTokenExpired {
+            let token = self.get_token(true).await?;
+            self.api.get_task(req, &token).await
+        } else {
+            Ok(response)
+        }
     }
 
-    fn submit_proof_sync(
+    pub async fn submit_proof(
         &self,
         req: &SubmitProofRequest,
-        token: &String,
     ) -> anyhow::Result<Response<SubmitProofResponseData>> {
-        self.rt.block_on(self.api.submit_proof(req, token))
-    }
+        let token = self.get_token(false).await?;
+        let response = self.api.submit_proof(req, &token).await?;
 
-    fn get_token_sync(&self, force_relogin: bool) -> anyhow::Result<String> {
-        self.rt.block_on(self.get_token_async(force_relogin))
+        if response.errcode == ErrorCode::ErrJWTTokenExpired {
+            let token = self.get_token(true).await?;
+            self.api.submit_proof(req, &token).await
+        } else {
+            Ok(response)
+        }
     }
 
     /// Retrieves a token for authentication, optionally forcing a re-login.
@@ -96,21 +73,18 @@ impl CoordinatorClient {
     ///
     /// If the token is expired, `force_relogin` is set to `true`, or a login was never performed
     /// before, it will authenticate and fetch a new token.
-    async fn get_token_async(&self, force_relogin: bool) -> anyhow::Result<String> {
-        let token_guard = self
-            .token
-            .lock()
-            .expect("Mutex locking only occurs within `get_token` fn, so there can be no double `lock` for one thread");
+    async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
+        let token_guard = self.token.lock().await;
 
-        match token_guard.as_deref() {
-            Some(token) if !force_relogin => return Ok(token.to_string()),
+        match *token_guard {
+            Some(ref token) if !force_relogin => return Ok(token.to_string()),
             _ => (),
         }
 
-        self.login_async(token_guard).await
+        self.login(token_guard).await
     }
 
-    async fn login_async<'t>(
+    async fn login<'t>(
         &self,
         mut token_guard: MutexGuard<'t, Option<String>>,
     ) -> anyhow::Result<String> {

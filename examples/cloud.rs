@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
@@ -50,7 +49,8 @@ impl CloudProver {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         .with_proving_service(Box::new(cloud_prover))
         .build()?;
 
-    Arc::new(prover).run()?;
+    prover.run().await;
 
-    loop {}
+    Ok(())
 }
