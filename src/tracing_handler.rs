@@ -6,25 +6,20 @@ use prover_darwin_v2::BlockTrace;
 use serde::{de::DeserializeOwned, Serialize};
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use tokio::runtime::Runtime;
 
 pub type CommonHash = H256;
 
 pub struct L2gethClient {
     provider: Provider<Http>,
-    rt: Runtime,
 }
 
 impl L2gethClient {
     pub fn new(cfg: L2GethConfig) -> anyhow::Result<Self> {
         let provider = Provider::<Http>::try_from(cfg.endpoint)?;
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-        Ok(Self { provider, rt })
+        Ok(Self { provider })
     }
 
-    async fn get_block_trace_by_hash_async<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
+    pub async fn get_block_trace_by_hash<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
     where
         T: Serialize + DeserializeOwned + Debug + Send,
     {
@@ -40,25 +35,14 @@ impl L2gethClient {
         Ok(trace)
     }
 
-    pub fn get_block_trace_by_hash_sync<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
-    where
-        T: Serialize + DeserializeOwned + Debug + Send,
-    {
-        self.rt.block_on(self.get_block_trace_by_hash_async(hash))
-    }
-
-    async fn block_number_async(&self) -> anyhow::Result<BlockNumber> {
+    pub async fn block_number(&self) -> anyhow::Result<BlockNumber> {
         log::info!("l2geth_client calling block_number");
 
         let trace = self.provider.request("eth_blockNumber", ()).await?;
         Ok(trace)
     }
 
-    pub fn block_number_sync(&self) -> anyhow::Result<BlockNumber> {
-        self.rt.block_on(self.block_number_async())
-    }
-
-    pub fn get_sorted_traces_by_hashes(
+    pub async fn get_sorted_traces_by_hashes(
         &self,
         block_hashes: &[CommonHash],
     ) -> anyhow::Result<Vec<BlockTrace>> {
@@ -69,7 +53,7 @@ impl L2gethClient {
 
         let mut block_traces = Vec::new();
         for hash in block_hashes.iter() {
-            let trace = self.get_block_trace_by_hash_sync(hash)?;
+            let trace = self.get_block_trace_by_hash(hash).await?;
             block_traces.push(trace);
         }
 

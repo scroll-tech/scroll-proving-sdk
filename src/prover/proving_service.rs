@@ -1,10 +1,12 @@
 use super::CircuitType;
+use async_trait::async_trait;
 
+#[async_trait]
 pub trait ProvingService {
     fn is_local(&self) -> bool;
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse;
-    fn prove(&self, req: ProveRequest) -> ProveResponse;
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse;
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse;
+    async fn prove(&self, req: ProveRequest) -> ProveResponse;
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
 pub struct GetVkRequest {

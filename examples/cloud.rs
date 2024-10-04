@@ -1,5 +1,5 @@
+use async_trait::async_trait;
 use clap::Parser;
-use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
@@ -26,17 +26,18 @@ struct CloudProver {
     api_key: String,
 }
 
+#[async_trait]
 impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
-    fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -50,7 +51,8 @@ impl CloudProver {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -58,9 +60,10 @@ fn main() -> anyhow::Result<()> {
     let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
-        .build()?;
+        .build()
+        .await?;
 
-    Arc::new(prover).run()?;
+    prover.run().await;
 
-    loop {}
+    Ok(())
 }
