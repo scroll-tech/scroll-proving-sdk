@@ -10,7 +10,6 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
@@ -37,7 +36,6 @@ struct CloudProver {
     api_key: String,
     send_timeout: Duration,
     client: ClientWithMiddleware,
-    rt: tokio::runtime::Runtime,
 }
 
 #[derive(serde::Deserialize)]
@@ -123,12 +121,13 @@ impl ProvingService for CloudProver {
         }
 
         match self
-            .rt
-            .block_on(self.get_with_token::<SindriGetDetailResponse>(
+            .get_with_token::<SindriGetDetailResponse>(
                 MethodClass::Circuit(req.circuit_type),
                 "detail",
                 None,
-            )) {
+            )
+            .await
+        {
             Ok(resp) => match reformat_vk(resp.verification_key.verification_key) {
                 Ok(vk) => GetVkResponse { vk, error: None },
                 Err(e) => GetVkResponse {
@@ -173,13 +172,14 @@ impl ProvingService for CloudProver {
             perform_verify: true,
         };
 
-        match self.rt.block_on(
-            self.post_with_token::<SindriProveRequest, SindriTaskStatusResponse>(
+        match self
+            .post_with_token::<SindriProveRequest, SindriTaskStatusResponse>(
                 MethodClass::Circuit(req.circuit_type),
                 "prove",
                 &sindri_req,
-            ),
-        ) {
+            )
+            .await
+        {
             Ok(resp) => ProveResponse {
                 task_id: resp.proof_id,
                 circuit_type: req.circuit_type,
@@ -221,12 +221,13 @@ impl ProvingService for CloudProver {
         ]);
 
         match self
-            .rt
-            .block_on(self.get_with_token::<SindriTaskStatusResponse>(
+            .get_with_token::<SindriTaskStatusResponse>(
                 MethodClass::Proof(req.task_id.clone()),
                 "detail",
                 Some(query_params),
-            )) {
+            )
+            .await
+        {
             Ok(resp) => QueryTaskResponse {
                 task_id: resp.proof_id,
                 circuit_type: CircuitType::Undefined, // TODO:
@@ -278,17 +279,11 @@ impl CloudProver {
 
         let base_url = Url::parse(&cfg.base_url).expect("cannot parse cloud prover base_url");
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
         Self {
             base_url,
             api_key: cfg.api_key,
             send_timeout: Duration::from_secs(cfg.connection_timeout_sec),
             client,
-            rt,
         }
     }
 
