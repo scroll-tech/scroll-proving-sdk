@@ -1,6 +1,5 @@
 use super::error::ErrorCode;
 use crate::{prover::CircuitType, tracing_handler::CommonHash};
-use ethers_core::types::U64;
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
