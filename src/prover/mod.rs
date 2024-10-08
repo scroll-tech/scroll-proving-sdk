@@ -52,9 +52,8 @@ impl Prover {
 
             info!(?prover_name, "Getting task from coordinator");
 
-            match self.handle_task(coordinator_client).await {
-                Ok(()) => {}
-                Err(e) => error!(?prover_name, ?e, "Error handling task"),
+            if let Err(e) = self.handle_task(coordinator_client).await {
+                error!(?prover_name, ?e, "Error handling task");
             }
 
             sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
@@ -62,7 +61,16 @@ impl Prover {
     }
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
-        let prover_name = &coordinator_client.prover_name;
+        let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
+        let proving_task = self.request_proving(&coordinator_task).await?;
+        self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
+            .await
+    }
+
+    async fn get_coordinator_task(
+        &self,
+        coordinator_client: &CoordinatorClient,
+    ) -> anyhow::Result<GetTaskResponseData> {
         let get_task_request = self.build_get_task_request().await;
         let coordinator_task = coordinator_client.get_task(&get_task_request).await?;
 
@@ -74,31 +82,32 @@ impl Prover {
             );
         }
 
-        let coordinator_task = coordinator_task
+        coordinator_task
             .data
-            .ok_or_else(|| anyhow::anyhow!("No task available"))?;
-        let coordinator_task_uuid = coordinator_task.uuid.clone();
-        let coordinator_task_id = coordinator_task.task_id.clone();
-        let task_type = coordinator_task.task_type;
+            .ok_or_else(|| anyhow::anyhow!("No task available"))
+    }
 
-        let proving_input = self.build_proving_input(&coordinator_task).await?;
+    async fn request_proving(
+        &self,
+        coordinator_task: &GetTaskResponseData,
+    ) -> anyhow::Result<proving_service::ProveResponse> {
+        let proving_input = self.build_proving_input(coordinator_task).await?;
         let proving_task = self.proving_service.prove(proving_input).await;
 
         if let Some(error) = proving_task.error {
             anyhow::bail!(
                 "Failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
-                task_type,
-                coordinator_task_uuid,
-                coordinator_task_id,
+                coordinator_task.task_type,
+                coordinator_task.uuid,
+                coordinator_task.task_id,
                 error,
             );
         }
 
-        self.handle_proving_task(coordinator_client, &coordinator_task, proving_task.task_id)
-            .await
+        Ok(proving_task)
     }
 
-    async fn handle_proving_task(
+    async fn handle_proving_progress(
         &self,
         coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponseData,
@@ -255,13 +264,7 @@ impl Prover {
                     input,
                 })
             }
-            CircuitType::Batch => Ok(ProveRequest {
-                circuit_type: task.task_type,
-                circuit_version: self.circuit_version.clone(),
-                hard_fork_name: task.hard_fork_name.clone(),
-                input: task.task_data.clone(),
-            }),
-            CircuitType::Bundle => Ok(ProveRequest {
+            CircuitType::Batch | CircuitType::Bundle => Ok(ProveRequest {
                 circuit_type: task.task_type,
                 circuit_version: self.circuit_version.clone(),
                 hard_fork_name: task.hard_fork_name.clone(),
