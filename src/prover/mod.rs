@@ -148,7 +148,8 @@ impl Prover {
                             let submit_proof_req = SubmitProofRequest {
                                 uuid: coordinator_task_uuid.clone(),
                                 task_id: coordinator_task_id.clone(),
-                                task_type: task.circuit_type,
+                                // task_type: task.circuit_type, // TODO: task.circuit_type is incorrect atm
+                                task_type,
                                 status: ProofStatus::Ok,
                                 proof: task.proof.unwrap(),
                                 failure_type: None,
