@@ -8,7 +8,7 @@ use reqwest::{
 };
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use scroll_proving_sdk::{
@@ -38,12 +38,12 @@ struct CloudProver {
     client: ClientWithMiddleware,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 struct VerificationKey {
     verification_key: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 struct SindriTaskStatusResponse {
     pub proof_id: String,
     pub project_name: String,
@@ -58,7 +58,7 @@ struct SindriTaskStatusResponse {
     pub error: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 enum SindriTaskStatus {
     #[serde(rename = "Queued")]
     Queued,
@@ -208,17 +208,20 @@ impl ProvingService for CloudProver {
                 input: Some(req.input.clone()),
                 proof: None,
                 vk: None,
-                error: Some(anyhow::anyhow!("failed to request proof: {e}").to_string()),
+                error: Some(format!("Failed to request proof: {}", e)),
             },
         }
     }
 
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
-        let query_params: HashMap<String, String> = HashMap::from([
-            ("include_proof".to_string(), "true".to_string()),
-            ("include_public".to_string(), "true".to_string()),
-            ("include_verification_key".to_string(), "true".to_string()),
-        ]);
+        let query_params: HashMap<String, String> = [
+            ("include_proof", "true"),
+            ("include_public", "true"),
+            ("include_verification_key", "true"),
+        ]
+        .iter()
+        .map(|&(k, v)| (k.to_string(), v.to_string()))
+        .collect();
 
         match self
             .get_with_token::<SindriTaskStatusResponse>(
@@ -244,7 +247,7 @@ impl ProvingService for CloudProver {
                 error: resp.error,
             },
             Err(e) => {
-                log::error!("failed to query proof: {:?}", e);
+                log::error!("Failed to query proof: {:?}", e);
                 QueryTaskResponse {
                     task_id: req.task_id,
                     circuit_type: CircuitType::Undefined,
@@ -258,7 +261,7 @@ impl ProvingService for CloudProver {
                     input: None,
                     proof: None,
                     vk: None,
-                    error: Some(anyhow::anyhow!("failed to query proof: {e}").to_string()),
+                    error: Some(format!("Failed to query proof: {}", e)),
                 }
             }
         }
@@ -309,9 +312,7 @@ impl CloudProver {
         let mut url = self.base_url.join(&method_base)?.join(method)?;
 
         if let Some(params) = query_params {
-            for (key, value) in params {
-                url.query_pairs_mut().append_pair(&key, &value);
-            }
+            url.query_pairs_mut().extend_pairs(params);
         }
 
         Ok(url)
@@ -361,7 +362,7 @@ impl CloudProver {
         log::info!("[sindri client]: {:?}", url.as_str());
 
         let resp_builder = match request_body {
-            Some(request_body) => self.client.post(url).body(request_body),
+            Some(body) => self.client.post(url).body(body),
             None => self.client.get(url),
         };
 
@@ -369,7 +370,7 @@ impl CloudProver {
             .timeout(self.send_timeout)
             .header(CONTENT_TYPE, "application/json")
             .header(CONTENT_ENCODING, "gzip")
-            .bearer_auth(self.api_key.clone());
+            .bearer_auth(&self.api_key);
 
         let response = resp_builder.send().await?;
 
@@ -394,7 +395,12 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
     let cfg: Config = Config::from_file(args.config_file)?;
-    let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
+    let cloud_prover = CloudProver::new(
+        cfg.prover
+            .cloud
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("Missing cloud prover configuration"))?,
+    );
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
         .build()
