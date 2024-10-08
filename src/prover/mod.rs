@@ -255,13 +255,7 @@ impl Prover {
                     input,
                 })
             }
-            CircuitType::Batch => Ok(ProveRequest {
-                circuit_type: task.task_type,
-                circuit_version: self.circuit_version.clone(),
-                hard_fork_name: task.hard_fork_name.clone(),
-                input: task.task_data.clone(),
-            }),
-            CircuitType::Bundle => Ok(ProveRequest {
+            CircuitType::Batch | CircuitType::Bundle => Ok(ProveRequest {
                 circuit_type: task.task_type,
                 circuit_version: self.circuit_version.clone(),
                 hard_fork_name: task.hard_fork_name.clone(),
