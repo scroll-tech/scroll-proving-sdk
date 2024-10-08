@@ -62,8 +62,8 @@ impl Prover {
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
-        let proving_task = self.request_proving_task(&coordinator_task).await?;
-        self.handle_proving_task(coordinator_client, &coordinator_task, proving_task.task_id)
+        let proving_task = self.request_proving(&coordinator_task).await?;
+        self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
     }
 
@@ -87,7 +87,7 @@ impl Prover {
             .ok_or_else(|| anyhow::anyhow!("No task available"))
     }
 
-    async fn request_proving_task(
+    async fn request_proving(
         &self,
         coordinator_task: &GetTaskResponseData,
     ) -> anyhow::Result<proving_service::ProveResponse> {
@@ -107,7 +107,7 @@ impl Prover {
         Ok(proving_task)
     }
 
-    async fn handle_proving_task(
+    async fn handle_proving_progress(
         &self,
         coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponseData,
