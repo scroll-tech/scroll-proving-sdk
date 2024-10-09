@@ -29,10 +29,10 @@ jobs:
         push: true
         tags: scrolltech/sdk-cloud-prover:${{ github.ref_name }},scrolltech/sdk-cloud-prover:latest
 
-    - name: Build and push local Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: docker/Dockerfile.local
-        push: true
-        tags: scrolltech/sdk-local-prover:${{ github.ref_name }},scrolltech/sdk-local-prover:latest
+    # - name: Build and push local Docker image
+    #   uses: docker/build-push-action@v4
+    #   with:
+    #     context: .
+    #     file: docker/Dockerfile.local
+    #     push: true
+    #     tags: scrolltech/sdk-local-prover:${{ github.ref_name }},scrolltech/sdk-local-prover:latest
