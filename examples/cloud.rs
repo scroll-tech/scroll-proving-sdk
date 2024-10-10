@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use clap::Parser;
 use core::time::Duration;
-use prover_darwin_v2::ChunkProof;
 use reqwest::{
     header::{CONTENT_ENCODING, CONTENT_TYPE},
     Url,
@@ -52,7 +51,7 @@ struct SindriTaskStatusResponse {
     // pub compute_time_sec: Option<u64>,
     // pub queue_time_sec: Option<u64>,
     pub verification_key: Option<VerificationKey>,
-    pub proof: Option<ChunkProof>, // TODO: support other proof types
+    pub proof: Option<serde_json::Value>,
     // pub public: Option<String>, // TODO: fix me
     pub warnings: Option<Vec<String>>,
     pub error: Option<String>,
