@@ -143,21 +143,12 @@ impl ProvingService for CloudProver {
 
     async fn prove(&self, req: ProveRequest) -> ProveResponse {
         if req.circuit_version != THIS_CIRCUIT_VERSION {
-            return ProveResponse {
-                task_id: String::new(),
-                circuit_type: req.circuit_type,
-                circuit_version: req.circuit_version,
-                hard_fork_name: req.hard_fork_name,
-                status: TaskStatus::Failed,
-                created_at: 0,
-                started_at: None,
-                finished_at: None,
-                // compute_time_sec: None,
-                input: Some(req.input.clone()),
-                proof: None,
-                vk: None,
-                error: Some("circuit version mismatch".to_string()),
-            };
+            return build_prove_error_response(&req, "circuit version mismatch");
+        };
+
+        let input = match reprocess_prove_input(&req) {
+            Ok(input) => input,
+            Err(e) => return build_prove_error_response(&req, &e.to_string()),
         };
 
         #[derive(serde::Deserialize, serde::Serialize)]
@@ -165,50 +156,6 @@ impl ProvingService for CloudProver {
             proof_input: String,
             perform_verify: bool,
         }
-
-        let input = if req.circuit_type == CircuitType::Bundle {
-            match serde_json::from_str::<prover_darwin_v2::BundleProvingTask>(&req.input) {
-                Ok(bundle_task_detail) => {
-                    match serde_json::to_string(&bundle_task_detail.batch_proofs) {
-                        Ok(input) => input,
-                        Err(e) => {
-                            return ProveResponse {
-                                task_id: String::new(),
-                                circuit_type: req.circuit_type,
-                                circuit_version: req.circuit_version,
-                                hard_fork_name: req.hard_fork_name,
-                                status: TaskStatus::Failed,
-                                created_at: 0,
-                                started_at: None,
-                                finished_at: None,
-                                input: Some(req.input.clone()),
-                                proof: None,
-                                vk: None,
-                                error: Some(format!("Failed to serialize batch_proofs: {}", e)),
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    return ProveResponse {
-                        task_id: String::new(),
-                        circuit_type: req.circuit_type,
-                        circuit_version: req.circuit_version,
-                        hard_fork_name: req.hard_fork_name,
-                        status: TaskStatus::Failed,
-                        created_at: 0,
-                        started_at: None,
-                        finished_at: None,
-                        input: Some(req.input.clone()),
-                        proof: None,
-                        vk: None,
-                        error: Some(format!("Failed to parse BundleTaskDetail: {}", e)),
-                    }
-                }
-            }
-        } else {
-            req.input.clone()
-        };
 
         let sindri_req = SindriProveRequest {
             proof_input: input,
@@ -238,21 +185,7 @@ impl ProvingService for CloudProver {
                 vk: resp.verification_key.map(|vk| vk.verification_key),
                 error: resp.error,
             },
-            Err(e) => ProveResponse {
-                task_id: String::new(),
-                circuit_type: req.circuit_type,
-                circuit_version: req.circuit_version,
-                hard_fork_name: req.hard_fork_name,
-                status: TaskStatus::Failed,
-                created_at: 0,
-                started_at: None,
-                finished_at: None,
-                // compute_time_sec: None,
-                input: Some(req.input.clone()),
-                proof: None,
-                vk: None,
-                error: Some(format!("Failed to request proof: {}", e)),
-            },
+            Err(e) => return build_prove_error_response(&req, &format!("Failed to request proof: {}", e)),
         }
     }
 
@@ -308,6 +241,33 @@ impl ProvingService for CloudProver {
                 }
             }
         }
+    }
+}
+
+fn build_prove_error_response(req: &ProveRequest, error_msg: &str) -> ProveResponse {
+    ProveResponse {
+        task_id: String::new(),
+        circuit_type: req.circuit_type,
+        circuit_version: req.circuit_version.clone(),
+        hard_fork_name: req.hard_fork_name.clone(),
+        status: TaskStatus::Failed,
+        created_at: 0,
+        started_at: None,
+        finished_at: None,
+        // compute_time_sec: None,
+        input: Some(req.input.clone()),
+        proof: None,
+        vk: None,
+        error: Some(error_msg.to_string()),
+    }
+}
+
+fn reprocess_prove_input(req: &ProveRequest) -> anyhow::Result<String> {
+    if req.circuit_type == CircuitType::Bundle {
+        let bundle_task_detail: prover_darwin_v2::BundleProvingTask = serde_json::from_str(&req.input)?;
+        Ok(serde_json::to_string(&bundle_task_detail.batch_proofs)?)
+    } else {
+        Ok(req.input.clone())
     }
 }
 
