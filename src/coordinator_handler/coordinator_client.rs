@@ -107,11 +107,16 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
+        let prover_types = match self.circuit_type {
+            CircuitType::Batch | CircuitType::Bundle => vec![CircuitType::Batch], // to conform to coordinator logic
+            _ => vec![self.circuit_type],
+        };
+
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
             prover_name: self.prover_name.clone(),
             prover_version: get_version(&self.circuit_version).to_string(),
-            prover_types: vec![self.circuit_type],
+            prover_types,
             vks: self.vks.clone(),
         };
 
