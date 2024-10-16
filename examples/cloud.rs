@@ -7,7 +7,6 @@ use reqwest::{
 };
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
-use scroll_proving_sdk::coordinator_handler::BundleTaskDetail;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -168,7 +167,7 @@ impl ProvingService for CloudProver {
         }
 
         let input = if req.circuit_type == CircuitType::Bundle {
-            match serde_json::from_str::<BundleTaskDetail>(&req.input) {
+            match serde_json::from_str::<prover_darwin_v2::BundleProvingTask>(&req.input) {
                 Ok(bundle_task_detail) => {
                     match serde_json::to_string(&bundle_task_detail.batch_proofs) {
                         Ok(input) => input,
