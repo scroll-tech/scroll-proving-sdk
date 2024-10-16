@@ -76,6 +76,8 @@ pub struct ChunkTaskDetail {
     pub block_hashes: Vec<CommonHash>,
 }
 
+pub type BundleTaskDetail = prover_darwin_v2::BundleProvingTask;
+
 #[derive(Serialize, Deserialize)] // TODO: Default?
 pub struct SubmitProofRequest {
     pub uuid: String,

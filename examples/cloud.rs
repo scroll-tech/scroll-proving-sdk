@@ -7,6 +7,7 @@ use reqwest::{
 };
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
+use scroll_proving_sdk::coordinator_handler::BundleTaskDetail;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -166,8 +167,52 @@ impl ProvingService for CloudProver {
             perform_verify: bool,
         }
 
+        let input = if req.circuit_type == CircuitType::Bundle {
+            match serde_json::from_str::<BundleTaskDetail>(&req.input) {
+                Ok(bundle_task_detail) => {
+                    match serde_json::to_string(&bundle_task_detail.batch_proofs) {
+                        Ok(input) => input,
+                        Err(e) => {
+                            return ProveResponse {
+                                task_id: String::new(),
+                                circuit_type: req.circuit_type,
+                                circuit_version: req.circuit_version,
+                                hard_fork_name: req.hard_fork_name,
+                                status: TaskStatus::Failed,
+                                created_at: 0,
+                                started_at: None,
+                                finished_at: None,
+                                input: Some(req.input.clone()),
+                                proof: None,
+                                vk: None,
+                                error: Some(format!("Failed to serialize batch_proofs: {}", e)),
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    return ProveResponse {
+                        task_id: String::new(),
+                        circuit_type: req.circuit_type,
+                        circuit_version: req.circuit_version,
+                        hard_fork_name: req.hard_fork_name,
+                        status: TaskStatus::Failed,
+                        created_at: 0,
+                        started_at: None,
+                        finished_at: None,
+                        input: Some(req.input.clone()),
+                        proof: None,
+                        vk: None,
+                        error: Some(format!("Failed to parse BundleTaskDetail: {}", e)),
+                    }
+                }
+            }
+        } else {
+            req.input.clone()
+        };
+
         let sindri_req = SindriProveRequest {
-            proof_input: req.input.clone(),
+            proof_input: input,
             perform_verify: true,
         };
 
