@@ -85,6 +85,7 @@ enum MethodClass {
     Proof(String),
 }
 
+// reencode the vk because the encoding scheme used in sindri is different from the one used in scroll internally
 fn reformat_vk(vk_old: String) -> anyhow::Result<String> {
     log::debug!("vk_old: {:?}", vk_old);
 
@@ -264,6 +265,7 @@ fn build_prove_error_response(req: &ProveRequest, error_msg: &str) -> ProveRespo
     }
 }
 
+// get rid of the "batch_proofs" layer because sindri expects the inner array as the input directly
 fn reprocess_prove_input(req: &ProveRequest) -> anyhow::Result<String> {
     if req.circuit_type == CircuitType::Bundle {
         let bundle_task_detail: prover_darwin_v2::BundleProvingTask =
