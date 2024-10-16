@@ -48,11 +48,11 @@ struct SindriTaskStatusResponse {
     pub project_name: String,
     pub perform_verify: bool,
     pub status: SindriTaskStatus,
-    // pub compute_time_sec: Option<u64>,
-    // pub queue_time_sec: Option<u64>,
+    pub compute_time_sec: Option<f64>,
+    pub queue_time_sec: Option<f64>,
     pub verification_key: Option<VerificationKey>,
     pub proof: Option<serde_json::Value>,
-    // pub public: Option<String>, // TODO: fix me
+    pub public: Option<serde_json::Value>,
     pub warnings: Option<Vec<String>>,
     pub error: Option<String>,
 }
@@ -176,16 +176,18 @@ impl ProvingService for CloudProver {
                 circuit_version: req.circuit_version,
                 hard_fork_name: req.hard_fork_name,
                 status: resp.status.into(),
-                created_at: 0,     // TODO:
+                created_at: 0.0,   // TODO:
                 started_at: None,  // TODO:
                 finished_at: None, // TODO:
-                // compute_time_sec: resp.compute_time_sec,
+                compute_time_sec: resp.compute_time_sec,
                 input: Some(req.input.clone()),
                 proof: serde_json::to_string(&resp.proof).ok(),
                 vk: resp.verification_key.map(|vk| vk.verification_key),
                 error: resp.error,
             },
-            Err(e) => return build_prove_error_response(&req, &format!("Failed to request proof: {}", e)),
+            Err(e) => {
+                return build_prove_error_response(&req, &format!("Failed to request proof: {}", e))
+            }
         }
     }
 
@@ -213,10 +215,10 @@ impl ProvingService for CloudProver {
                 circuit_version: "".to_string(),
                 hard_fork_name: "".to_string(),
                 status: resp.status.into(),
-                created_at: 0,     // TODO:
+                created_at: 0.0,   // TODO:
                 started_at: None,  // TODO:
                 finished_at: None, // TODO:
-                // compute_time_sec: resp.compute_time_sec,
+                compute_time_sec: resp.compute_time_sec,
                 input: None,
                 proof: serde_json::to_string(&resp.proof).ok(),
                 vk: resp.verification_key.map(|vk| vk.verification_key),
@@ -230,10 +232,10 @@ impl ProvingService for CloudProver {
                     circuit_version: "".to_string(),
                     hard_fork_name: "".to_string(),
                     status: TaskStatus::Queued,
-                    created_at: 0,
+                    created_at: 0.0,
                     started_at: None,
                     finished_at: None,
-                    // compute_time_sec: None,
+                    compute_time_sec: None,
                     input: None,
                     proof: None,
                     vk: None,
@@ -251,10 +253,10 @@ fn build_prove_error_response(req: &ProveRequest, error_msg: &str) -> ProveRespo
         circuit_version: req.circuit_version.clone(),
         hard_fork_name: req.hard_fork_name.clone(),
         status: TaskStatus::Failed,
-        created_at: 0,
+        created_at: 0.0,
         started_at: None,
         finished_at: None,
-        // compute_time_sec: None,
+        compute_time_sec: None,
         input: Some(req.input.clone()),
         proof: None,
         vk: None,
@@ -264,7 +266,8 @@ fn build_prove_error_response(req: &ProveRequest, error_msg: &str) -> ProveRespo
 
 fn reprocess_prove_input(req: &ProveRequest) -> anyhow::Result<String> {
     if req.circuit_type == CircuitType::Bundle {
-        let bundle_task_detail: prover_darwin_v2::BundleProvingTask = serde_json::from_str(&req.input)?;
+        let bundle_task_detail: prover_darwin_v2::BundleProvingTask =
+            serde_json::from_str(&req.input)?;
         Ok(serde_json::to_string(&bundle_task_detail.batch_proofs)?)
     } else {
         Ok(req.input.clone())
