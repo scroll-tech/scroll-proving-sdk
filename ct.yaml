@@ -1,0 +1,7 @@
+remote: origin
+target-branch: main
+chart-dirs:
+  - charts
+validate-maintainers: true
+check-version-increment: true
+debug: true
