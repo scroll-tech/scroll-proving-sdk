@@ -52,4 +52,5 @@ probes:
   startup:
     <<: *default_probes
 
-scrollConfig: {}
+scrollConfig: |
+  {}

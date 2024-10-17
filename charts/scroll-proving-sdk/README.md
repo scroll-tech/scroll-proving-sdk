@@ -1,6 +1,6 @@
 # scroll-proving-sdk
 
-![Version: 0.0.1](https://img.shields.io/badge/Version-0.0.1-informational?style=flat-square) ![AppVersion: v0.1.0](https://img.shields.io/badge/AppVersion-v0.1.0-informational?style=flat-square)
+![Version: 0.0.2](https://img.shields.io/badge/Version-0.0.2-informational?style=flat-square) ![AppVersion: v0.1.0](https://img.shields.io/badge/AppVersion-v0.1.0-informational?style=flat-square)
 
 scroll-proving-sdk helm charts
 
@@ -54,7 +54,7 @@ Kubernetes: `>=1.22.0-0`
 | resources.limits.memory | string | `"500Mi"` |  |
 | resources.requests.cpu | string | `"50m"` |  |
 | resources.requests.memory | string | `"100Mi"` |  |
-| scrollConfig | string | `"{\n    \"prover_name_prefix\": \"sindri_\",\n    \"keys_dir\": \"keys\",\n    \"coordinator\": {\n        \"base_url\": \"https://coordinator-api.oct.sdk.scroll.xyz\",\n        \"retry_count\": 3,\n        \"retry_wait_time_sec\": 5,\n        \"connection_timeout_sec\": 60\n    },\n    \"l2geth\": {\n        \"endpoint\": \"https://l2-rpc.oct.sdk.scroll.xyz\"\n    },\n    \"prover\": {\n        \"circuit_type\": 3,\n        \"circuit_version\": \"v0.13.1\",\n        \"n_workers\": 1,\n        \"cloud\": {\n            \"base_url\": \"https://sindri.app/api/v1/\",\n            \"api_key\": \"sindri_TQcZKJHoPhAho7UuBFw8evEvP4nQkjQ4_0807\",\n            \"retry_count\": 3,\n            \"retry_wait_time_sec\": 5,\n            \"connection_timeout_sec\": 60\n        }\n    }\n}"` |  |
+| scrollConfig | object | `{}` |  |
 | service.main.enabled | bool | `true` |  |
 | service.main.ports.http.enabled | bool | `true` |  |
 | service.main.ports.http.port | int | `80` |  |
