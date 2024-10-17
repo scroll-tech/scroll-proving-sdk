@@ -22,3 +22,7 @@ target/
 
 config.json
 keys/
+
+# Helm chart related
+*.lock
+*.tgz

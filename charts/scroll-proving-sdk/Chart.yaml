@@ -1,0 +1,14 @@
+---
+apiVersion: v2
+description: scroll-proving-sdk helm charts
+name: scroll-proving-sdk
+version: 0.0.1
+appVersion: v0.1.0
+kubeVersion: ">=1.22.0-0"
+maintainers:
+  - name: scroll-tech
+    email: sebastien@scroll.io
+dependencies:
+  - name: common
+    repository: "oci://ghcr.io/scroll-tech/scroll-sdk/helm"
+    version: 1.5.1
