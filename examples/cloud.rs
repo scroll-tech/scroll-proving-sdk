@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use clap::Parser;
+use reqwest::Url;
 
 use scroll_proving_sdk::{
     config::{CloudProverConfig, Config},
@@ -22,7 +23,7 @@ struct Args {
 }
 
 struct CloudProver {
-    base_url: String,
+    base_url: Url,
     api_key: String,
 }
 
@@ -44,8 +45,9 @@ impl ProvingService for CloudProver {
 
 impl CloudProver {
     pub fn new(cfg: CloudProverConfig) -> Self {
+        let base_url = Url::parse(&cfg.base_url).expect("cannot parse cloud prover base_url");
         Self {
-            base_url: cfg.base_url,
+            base_url,
             api_key: cfg.api_key,
         }
     }
@@ -57,7 +59,12 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
     let cfg: Config = Config::from_file(args.config_file)?;
-    let cloud_prover = CloudProver::new(cfg.prover.cloud.clone().unwrap());
+    let cloud_prover = CloudProver::new(
+        cfg.prover
+            .cloud
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("Missing cloud prover configuration"))?,
+    );
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(cloud_prover))
         .build()
