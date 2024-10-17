@@ -276,6 +276,7 @@ fn reprocess_prove_input(req: &ProveRequest) -> anyhow::Result<String> {
     }
 }
 
+// alternatively, we can just read it from the config
 const THIS_CIRCUIT_VERSION: &str = "v0.13.1";
 
 impl CloudProver {
