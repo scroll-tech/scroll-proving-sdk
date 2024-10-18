@@ -1,0 +1,15 @@
+persistence:
+  scroll-proving-sdk:
+    enabled: true
+    type: secret
+    mountPath: /sdk_prover/
+    name: scroll-proving-sdk-config
+
+externalSecrets:
+  scroll-proving-sdk-config:
+    data:
+      - remoteRef:
+          key: scroll/scroll-proving-sdk-config
+        secretKey: config.json
+    refreshInterval: 2m
+    serviceAccount: external-secrets
