@@ -52,5 +52,6 @@ probes:
   startup:
     <<: *default_probes
 
+# Add here the config.json file. You can see an example in example-config.yaml
 scrollConfig: |
   {}
