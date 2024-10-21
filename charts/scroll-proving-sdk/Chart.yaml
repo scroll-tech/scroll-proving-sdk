@@ -1,6 +1,6 @@
 ---
 apiVersion: v2
-description: scroll-proving-sdk helm charts
+description: Example chart for showing how to package a service built using the scroll-proving-sdk library
 name: scroll-proving-sdk
 version: 0.0.3
 appVersion: v0.1.0
