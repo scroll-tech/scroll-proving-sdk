@@ -1,0 +1,14 @@
+---
+apiVersion: v2
+description: Example chart for showing how to package a service built using the scroll-proving-sdk library
+name: scroll-proving-sdk
+version: 0.0.3
+appVersion: v0.1.0
+kubeVersion: ">=1.22.0-0"
+maintainers:
+  - name: scroll-tech
+    email: sebastien@scroll.io
+dependencies:
+  - name: common
+    repository: "oci://ghcr.io/scroll-tech/scroll-sdk/helm"
+    version: 1.5.1
