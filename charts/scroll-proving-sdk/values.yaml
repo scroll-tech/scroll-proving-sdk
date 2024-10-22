@@ -22,7 +22,7 @@ resources:
     cpu: "100m"
 
 persistence:
-  *app_name:
+  config:
     enabled: true
     type: configMap
     mountPath: /sdk_prover/
