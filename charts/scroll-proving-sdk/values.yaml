@@ -6,7 +6,7 @@ global:
 image:
   repository: scrolltech/sdk-cloud-prover
   pullPolicy: Always
-  tag: sindri-2791edca
+  tag: sindri-v0.0.1
 
 command:
   - "/bin/sh"
@@ -27,6 +27,12 @@ persistence:
     type: configMap
     mountPath: /sdk_prover/
     name: scroll-proving-sdk-config  # Change this value to <ReleaseName>-config
+  keys:
+    enabled: true
+    type: pvc
+    mountPath: /keys/
+    size: 10Mi
+    accessMode: ReadWriteOnce
 
 service:
   main:
