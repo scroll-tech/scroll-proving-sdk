@@ -26,7 +26,7 @@ persistence:
     enabled: true
     type: configMap
     mountPath: /sdk_prover/
-    name: scroll-proving-sdk-config
+    name: scroll-proving-sdk-config # Change this value to <ReleaseName>-config
 
 service:
   main:
@@ -55,7 +55,7 @@ probes:
 # scrollConfig should be overwritten the config in json format. See the example below.
 scrollConfig: |
   {}
-# {
+#  {
 #   "prover_name_prefix": "sindri_",
 #   "keys_dir": "keys",
 #   "coordinator": {
@@ -79,4 +79,4 @@ scrollConfig: |
 #       "connection_timeout_sec": 60
 #     }
 #   }
-# }
+#  }
