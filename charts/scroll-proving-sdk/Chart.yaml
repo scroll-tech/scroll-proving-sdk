@@ -2,8 +2,7 @@
 apiVersion: v2
 description: Example chart for showing how to package a service built using the scroll-proving-sdk library
 name: scroll-proving-sdk
-version: 0.0.4
-appVersion: v0.1.0
+version: 0.0.5
 kubeVersion: ">=1.22.0-0"
 maintainers:
   - name: scroll-tech

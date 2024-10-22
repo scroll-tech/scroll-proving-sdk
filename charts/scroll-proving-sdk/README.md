@@ -1,6 +1,6 @@
 # scroll-proving-sdk
 
-![Version: 0.0.4](https://img.shields.io/badge/Version-0.0.4-informational?style=flat-square) ![AppVersion: v0.1.0](https://img.shields.io/badge/AppVersion-v0.1.0-informational?style=flat-square)
+![Version: 0.0.5](https://img.shields.io/badge/Version-0.0.5-informational?style=flat-square) ![AppVersion: v0.1.0](https://img.shields.io/badge/AppVersion-v0.1.0-informational?style=flat-square)
 
 Example chart for showing how to package a service built using the scroll-proving-sdk library
 
@@ -33,11 +33,16 @@ Kubernetes: `>=1.22.0-0`
 | global.nameOverride | string | `"scroll-proving-sdk"` |  |
 | image.pullPolicy | string | `"Always"` |  |
 | image.repository | string | `"scrolltech/sdk-cloud-prover"` |  |
-| image.tag | string | `"sindri-2791edca"` |  |
-| persistence.app_name.enabled | bool | `true` |  |
-| persistence.app_name.mountPath | string | `"/sdk_prover/"` |  |
-| persistence.app_name.name | string | `"scroll-proving-sdk-config"` |  |
-| persistence.app_name.type | string | `"configMap"` |  |
+| image.tag | string | `"sindri-v0.0.1"` |  |
+| persistence.config.enabled | bool | `true` |  |
+| persistence.config.mountPath | string | `"/sdk_prover/"` |  |
+| persistence.config.name | string | `"scroll-proving-sdk-config"` |  |
+| persistence.config.type | string | `"configMap"` |  |
+| persistence.keys.accessMode | string | `"ReadWriteOnce"` |  |
+| persistence.keys.enabled | bool | `true` |  |
+| persistence.keys.mountPath | string | `"/keys/"` |  |
+| persistence.keys.size | string | `"10Mi"` |  |
+| persistence.keys.type | string | `"pvc"` |  |
 | probes.liveness.<<.custom | bool | `true` |  |
 | probes.liveness.<<.enabled | bool | `true` |  |
 | probes.liveness.<<.spec.httpGet.path | string | `"/"` |  |
