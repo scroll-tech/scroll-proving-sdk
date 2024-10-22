@@ -26,7 +26,7 @@ persistence:
     enabled: true
     type: configMap
     mountPath: /sdk_prover/
-    name: scroll-proving-sdk-config # Change this value to <ReleaseName>-config
+    name: scroll-proving-sdk-config  # Change this value to <ReleaseName>-config
 
 service:
   main:
