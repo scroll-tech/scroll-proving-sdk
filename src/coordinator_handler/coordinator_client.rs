@@ -73,7 +73,7 @@ impl CoordinatorClient {
     ///
     /// If the token is expired, `force_relogin` is set to `true`, or a login was never performed
     /// before, it will authenticate and fetch a new token.
-    async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
+    pub async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
         let token_guard = self.token.lock().await;
 
         match *token_guard {
