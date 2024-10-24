@@ -37,7 +37,7 @@ impl Prover {
             assert!(self.l2geth_client.is_some());
         }
 
-        // use the first coordinator client to test the connection
+        // Use the first coordinator client to test the connection
         match self.coordinator_clients[0].get_token(true).await {
             Ok(_) => {}
             Err(e) => {
@@ -45,7 +45,6 @@ impl Prover {
             }
         };
 
-        // Start the HTTP health check server
         let app = Router::new().route("/", get(|| async { "OK" }));
         let addr = SocketAddr::from_str(&self.health_listener_addr).expect("Failed to parse socket address");
         let server = axum::Server::bind(&addr).serve(app.into_make_service());
@@ -62,7 +61,6 @@ impl Prover {
             });
         }
 
-        // Wait for all tasks to complete
         tokio::select! {
             _ = async { while provers.join_next().await.is_some() {} } => {},
             _ = server_task => {},
