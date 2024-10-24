@@ -48,12 +48,10 @@ impl Prover {
         let app = Router::new().route("/", get(|| async { "OK" }));
         let addr = SocketAddr::from_str(&self.health_listener_addr).expect("Failed to parse socket address");
         let server = axum::Server::bind(&addr).serve(app.into_make_service());
-        // Spawn the HTTP health check server task
-        let server_task = tokio::spawn(server);
+        let health_check_server_task = tokio::spawn(server);
 
         let mut provers = JoinSet::new();
         let self_arc = std::sync::Arc::new(self);
-        // Spawn prover tasks
         for i in 0..self_arc.n_workers {
             let self_clone = std::sync::Arc::clone(&self_arc);
             provers.spawn(async move {
@@ -62,8 +60,8 @@ impl Prover {
         }
 
         tokio::select! {
+            _ = health_check_server_task => {},
             _ = async { while provers.join_next().await.is_some() {} } => {},
-            _ = server_task => {},
         }
     }
 
