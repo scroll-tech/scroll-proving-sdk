@@ -37,16 +37,11 @@ impl Prover {
             assert!(self.l2geth_client.is_some());
         }
 
-        // Use the first coordinator client to test the connection
-        match self.coordinator_clients[0].get_token(true).await {
-            Ok(_) => {}
-            Err(e) => {
-                panic!("Failed to login: {:?}", e);
-            }
-        };
+        self.test_coordinator_connection().await;
 
         let app = Router::new().route("/", get(|| async { "OK" }));
-        let addr = SocketAddr::from_str(&self.health_listener_addr).expect("Failed to parse socket address");
+        let addr = SocketAddr::from_str(&self.health_listener_addr)
+            .expect("Failed to parse socket address");
         let server = axum::Server::bind(&addr).serve(app.into_make_service());
         let health_check_server_task = tokio::spawn(server);
 
@@ -63,6 +58,13 @@ impl Prover {
             _ = health_check_server_task => {},
             _ = async { while provers.join_next().await.is_some() {} } => {},
         }
+    }
+
+    async fn test_coordinator_connection(&self) {
+        self.coordinator_clients[0]
+            .get_token(true)
+            .await
+            .expect("Failed to login to coordinator");
     }
 
     #[instrument(skip(self))]
