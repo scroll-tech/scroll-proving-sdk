@@ -10,6 +10,12 @@ pub struct Config {
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
+    #[serde(default = "default_health_listener_addr")]
+    pub health_listener_addr: String,
+}
+
+fn default_health_listener_addr() -> String {
+    "0.0.0.0:80".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
