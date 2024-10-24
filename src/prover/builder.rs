@@ -92,6 +92,7 @@ impl ProverBuilder {
             l2geth_client,
             proving_service: self.proving_service.unwrap(),
             n_workers: self.cfg.prover.n_workers,
+            health_listener_addr: self.cfg.health_listener_addr,
         })
     }
 }

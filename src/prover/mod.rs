@@ -8,10 +8,14 @@ use crate::{
     },
     tracing_handler::L2gethClient,
 };
+use axum::{routing::get, Router};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use std::net::SocketAddr;
+use std::str::FromStr;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, instrument};
+
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 const WORKER_SLEEP_SEC: u64 = 20;
@@ -23,6 +27,7 @@ pub struct Prover {
     l2geth_client: Option<L2gethClient>,
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
+    health_listener_addr: String,
 }
 
 impl Prover {
@@ -31,6 +36,19 @@ impl Prover {
         if self.circuit_type == CircuitType::Chunk {
             assert!(self.l2geth_client.is_some());
         }
+
+        // Use the first coordinator client to test the connection
+        match self.coordinator_clients[0].get_token(true).await {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Failed to login: {:?}", e);
+            }
+        };
+
+        let app = Router::new().route("/", get(|| async { "OK" }));
+        let addr = SocketAddr::from_str(&self.health_listener_addr).expect("Failed to parse socket address");
+        let server = axum::Server::bind(&addr).serve(app.into_make_service());
+        let health_check_server_task = tokio::spawn(server);
 
         let mut provers = JoinSet::new();
         let self_arc = std::sync::Arc::new(self);
@@ -41,7 +59,10 @@ impl Prover {
             });
         }
 
-        while provers.join_next().await.is_some() {}
+        tokio::select! {
+            _ = health_check_server_task => {},
+            _ = async { while provers.join_next().await.is_some() {} } => {},
+        }
     }
 
     #[instrument(skip(self))]
