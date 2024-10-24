@@ -9,8 +9,8 @@ env:
   HELM_REGISTRY: ghcr.io/scroll-tech/scroll-sdk/helm/dev
 
 jobs:
-  helm-chart-testing-not-scroll-sdk:
-    name: chart-testing-without-scroll-sdk
+  helm-chart-testing-dev:
+    name: chart-testing-dev
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -51,11 +51,11 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: ct lint --config ct.yaml --excluded-charts scroll-sdk --target-branch ${{ github.event.repository.default_branch }}
 
-  publish-ghcr-not-scroll-sdk:
-    name: publish-to-github-without-scroll-sdk
+  publish-ghcr-dev:
+    name: publish-to-github
     runs-on: ubuntu-latest
     needs:
-      - helm-chart-testing-not-scroll-sdk
+      - helm-chart-testing-dev
     outputs:
       charts: ${{ steps.list-changed.outputs.changed }}
     steps:
