@@ -6,7 +6,7 @@ global:
 image:
   repository: scrolltech/sdk-cloud-prover
   pullPolicy: Always
-  tag: sindri-v0.0.1
+  tag: sindri-v0.0.2
 
 command:
   - "/bin/sh"
