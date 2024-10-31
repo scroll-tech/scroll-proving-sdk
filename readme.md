@@ -4,19 +4,19 @@
 
 ## Introduction
 
-Scroll Proving SDK is a Rust library for building services that interfaces with [Scroll SDK](https://github.com/scroll-tech/scroll-sdk)'s Coordinator.
+Scroll Proving SDK is a Rust library for building services that interface with the [Scroll SDK](https://github.com/scroll-tech/scroll-sdk) Coordinator service.
 
-It is designed to be used in conjunction with the Scroll SDK, allowing proof generation to be outsourced easily to third parties for chain operators, without them needing to run their own full node or know how to register for tasks on your network. 
+It is designed to be used in conjunction with the Scroll SDK, allowing proof generation to be outsourced easily to third parties, without proof generators needing to run their own full node or know about your network. 
 
 ## Repo Structure
 This repo contains:
 - `src/`: Core Rust library implementing the proving service interface
-- `examples/`: Example implementations of proving services using this SDK
+- `examples/`: Example implementations of external proving services using this SDK
 - `docker`: Dockerfile for creating containerized versions of the examples
 - `charts/scroll-proving-sdk`: Helm chart for deploying the examples on Kubernetes
 - `docs/`: Documentation and implementation information
 
-## Services Build with Scroll Proving SDK
+## Services Built with the Scroll Proving SDK
 
 > [!NOTE]
 > The following charts are developed and maintained by third parties. Please use with caution.
