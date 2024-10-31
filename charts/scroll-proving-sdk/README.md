@@ -33,7 +33,7 @@ Kubernetes: `>=1.22.0-0`
 | global.nameOverride | string | `"scroll-proving-sdk"` |  |
 | image.pullPolicy | string | `"Always"` |  |
 | image.repository | string | `"scrolltech/sdk-cloud-prover"` |  |
-| image.tag | string | `"sindri-v0.0.2"` |  |
+| image.tag | string | `"v0.0.2"` |  |
 | persistence.config.enabled | bool | `true` |  |
 | persistence.config.mountPath | string | `"/sdk_prover/"` |  |
 | persistence.config.name | string | `"scroll-proving-sdk-config"` |  |

@@ -1,6 +1,6 @@
 scrollConfig: |
   {
-    "prover_name_prefix": "sindri_",
+    "prover_name_prefix": "cloud_prover_",
     "keys_dir": "keys",
     "coordinator": {
       "base_url": "https://coordinator-api.scrollsdk",
@@ -16,7 +16,7 @@ scrollConfig: |
       "circuit_version": "v0.13.1",
       "n_workers": 1,
       "cloud": {
-        "base_url": "https://sindri.app/api/v1/",
+        "base_url": <CLOUD_PROVING_SERVICE_BASE_URL>,
         "api_key": <API_KEY>,
         "retry_count": 3,
         "retry_wait_time_sec": 5,

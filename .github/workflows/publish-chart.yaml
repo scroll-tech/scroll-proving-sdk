@@ -2,7 +2,7 @@ name: Lint, test and publish charts
 
 on:
   push:
-    branches: [ haoyu/sindri_tokio ]
+    branches: [ release/* ]
     paths:
       - 'charts/**'
 
