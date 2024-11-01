@@ -1,6 +1,6 @@
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
-const SDK_VERSION: &str = "v0.0.1";
+const SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn get_version(circuit_version: &str) -> String {
     // format!("{}-{}", SDK_VERSION, circuit_version)
