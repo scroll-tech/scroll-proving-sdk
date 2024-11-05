@@ -80,19 +80,44 @@ impl Config {
         Ok(cfg)
     }
 
+    fn get_env_var(key: &str) -> anyhow::Result<Option<String>> {
+        Ok(std::env::var_os(key).map(|val| {
+            val.to_str()
+                .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
+                .map(String::from)
+        }).transpose()?)
+    }
+
     fn override_with_env(&mut self) -> anyhow::Result<()> {
         dotenv().ok();
 
-        // read circuit_type from env if set
-        if let Some(circuit_type) = std::env::var_os("CIRCUIT_TYPE") {
-            let circuit_type = circuit_type
-                .to_str()
-                .ok_or_else(|| anyhow::anyhow!("CIRCUIT_TYPE env var is not valid UTF-8"))?
-                .parse::<u8>()?;
-            self.prover.circuit_type = CircuitType::from_u8(circuit_type);
+        if let Some(val) = Self::get_env_var("PROVER_NAME_PREFIX")? {
+            self.prover_name_prefix = val;
         }
-
-        // TODO: PROVER_NAME_PREFIX, KEYS_DIR, COORDINATOR_BASE_URL, L2GETH_ENDPOINT, PROVING_SERVICE_BASE_URL, PROVING_SERVICE_API_KEY
+        if let Some(val) = Self::get_env_var("KEYS_DIR")? {
+            self.keys_dir = val;
+        }
+        if let Some(val) = Self::get_env_var("COORDINATOR_BASE_URL")? {
+            self.coordinator.base_url = val;
+        }
+        if let Some(val) = Self::get_env_var("L2GETH_ENDPOINT")? {
+            if let Some(l2geth) = &mut self.l2geth {
+                l2geth.endpoint = val;
+            }
+        }
+        if let Some(val) = Self::get_env_var("CIRCUIT_TYPE")? {
+            self.prover.circuit_type = CircuitType::from_u8(val.parse()?);
+        }
+        if let Some(val) = Self::get_env_var("PROVING_SERVICE_BASE_URL")? {
+            if let Some(cloud) = &mut self.prover.cloud {
+                cloud.base_url = val;
+            }
+        }
+        if let Some(val) = Self::get_env_var("PROVING_SERVICE_API_KEY")? {
+            if let Some(cloud) = &mut self.prover.cloud {
+                cloud.api_key = val;
+            }
+        }
 
         Ok(())
     }
