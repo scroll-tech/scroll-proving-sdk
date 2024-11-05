@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
-    let cfg: Config = Config::from_file(args.config_file)?;
+    let cfg: Config = Config::from_file_and_env(args.config_file)?;
     let cloud_prover = CloudProver::new(
         cfg.prover
             .cloud
