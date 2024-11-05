@@ -1,4 +1,5 @@
 use crate::prover::CircuitType;
+use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -71,5 +72,28 @@ impl Config {
     pub fn from_file(file_name: String) -> anyhow::Result<Self> {
         let file = File::open(file_name)?;
         Config::from_reader(&file)
+    }
+
+    pub fn from_file_and_env(file_name: String) -> anyhow::Result<Self> {
+        let mut cfg = Config::from_file(file_name)?;
+        cfg.override_with_env()?;
+        Ok(cfg)
+    }
+
+    fn override_with_env(&mut self) -> anyhow::Result<()> {
+        dotenv().ok();
+
+        // read circuit_type from env if set
+        if let Some(circuit_type) = std::env::var_os("CIRCUIT_TYPE") {
+            let circuit_type = circuit_type
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("CIRCUIT_TYPE env var is not valid UTF-8"))?
+                .parse::<u8>()?;
+            self.prover.circuit_type = CircuitType::from_u8(circuit_type);
+        }
+
+        // TODO: PROVER_NAME_PREFIX, KEYS_DIR, COORDINATOR_BASE_URL, L2GETH_ENDPOINT, PROVING_SERVICE_BASE_URL, PROVING_SERVICE_API_KEY
+
+        Ok(())
     }
 }
