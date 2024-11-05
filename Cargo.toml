@@ -45,3 +45,4 @@ ctor = "0.2.8"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 axum = "0.6.0"
+dotenv = "0.15"

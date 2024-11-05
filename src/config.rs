@@ -1,4 +1,5 @@
 use crate::prover::CircuitType;
+use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -71,5 +72,53 @@ impl Config {
     pub fn from_file(file_name: String) -> anyhow::Result<Self> {
         let file = File::open(file_name)?;
         Config::from_reader(&file)
+    }
+
+    pub fn from_file_and_env(file_name: String) -> anyhow::Result<Self> {
+        let mut cfg = Config::from_file(file_name)?;
+        cfg.override_with_env()?;
+        Ok(cfg)
+    }
+
+    fn get_env_var(key: &str) -> anyhow::Result<Option<String>> {
+        Ok(std::env::var_os(key).map(|val| {
+            val.to_str()
+                .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
+                .map(String::from)
+        }).transpose()?)
+    }
+
+    fn override_with_env(&mut self) -> anyhow::Result<()> {
+        dotenv().ok();
+
+        if let Some(val) = Self::get_env_var("PROVER_NAME_PREFIX")? {
+            self.prover_name_prefix = val;
+        }
+        if let Some(val) = Self::get_env_var("KEYS_DIR")? {
+            self.keys_dir = val;
+        }
+        if let Some(val) = Self::get_env_var("COORDINATOR_BASE_URL")? {
+            self.coordinator.base_url = val;
+        }
+        if let Some(val) = Self::get_env_var("L2GETH_ENDPOINT")? {
+            if let Some(l2geth) = &mut self.l2geth {
+                l2geth.endpoint = val;
+            }
+        }
+        if let Some(val) = Self::get_env_var("CIRCUIT_TYPE")? {
+            self.prover.circuit_type = CircuitType::from_u8(val.parse()?);
+        }
+        if let Some(val) = Self::get_env_var("PROVING_SERVICE_BASE_URL")? {
+            if let Some(cloud) = &mut self.prover.cloud {
+                cloud.base_url = val;
+            }
+        }
+        if let Some(val) = Self::get_env_var("PROVING_SERVICE_API_KEY")? {
+            if let Some(cloud) = &mut self.prover.cloud {
+                cloud.api_key = val;
+            }
+        }
+
+        Ok(())
     }
 }
