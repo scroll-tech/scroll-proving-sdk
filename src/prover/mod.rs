@@ -15,6 +15,7 @@ use std::str::FromStr;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, instrument};
+use rocksdb::DB;
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
@@ -28,6 +29,7 @@ pub struct Prover {
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
     health_listener_addr: String,
+    db: DB,
 }
 
 impl Prover {

@@ -8,6 +8,7 @@ use std::fs::File;
 pub struct Config {
     pub prover_name_prefix: String,
     pub keys_dir: String,
+    pub db_path: String,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
