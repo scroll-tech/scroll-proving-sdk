@@ -8,8 +8,8 @@ use crate::{
     },
     tracing_handler::L2gethClient,
 };
-use std::path::PathBuf;
 use rocksdb::DB;
+use std::path::PathBuf;
 
 pub struct ProverBuilder {
     cfg: Config,

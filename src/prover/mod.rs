@@ -10,12 +10,12 @@ use crate::{
 };
 use axum::{routing::get, Router};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use rocksdb::DB;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, instrument};
-use rocksdb::DB;
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
