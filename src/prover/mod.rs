@@ -2,6 +2,7 @@ pub mod builder;
 pub mod proving_service;
 pub mod types;
 use crate::{
+    db::Db,
     coordinator_handler::{
         ChunkTaskDetail, CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData,
         ProofFailureType, ProofStatus, SubmitProofRequest,
@@ -10,7 +11,6 @@ use crate::{
 };
 use axum::{routing::get, Router};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
-use rocksdb::DB;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::task::JoinSet;
@@ -29,7 +29,7 @@ pub struct Prover {
     proving_service: Box<dyn ProvingService + Send + Sync>,
     n_workers: usize,
     health_listener_addr: String,
-    db: DB,
+    db: Db,
 }
 
 impl Prover {
@@ -86,6 +86,18 @@ impl Prover {
     }
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
+
+        // if let Some(task_id) = self.db.get(coordinator_client.prover_name.as_bytes()) {
+        // let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
+        // let proving_task = self.request_proving(&coordinator_task).await?;
+        if let Some(coordinator_task) = self.db.get(coordinator_client.key_signer.public_key().as_bytes()) {
+            let Some(proving_task_id) = self.db.get(coordinator_client.key_signer.public_key().as_bytes()) {
+                self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
+                .await
+            }
+        }
+
+
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
         let proving_task = self.request_proving(&coordinator_task).await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)

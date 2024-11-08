@@ -1,6 +1,7 @@
 use super::CircuitType;
 use crate::{
     config::Config,
+    db::Db,
     coordinator_handler::{CoordinatorClient, KeySigner},
     prover::{
         proving_service::{GetVkRequest, ProvingService},
@@ -8,7 +9,6 @@ use crate::{
     },
     tracing_handler::L2gethClient,
 };
-use rocksdb::DB;
 use std::path::PathBuf;
 
 pub struct ProverBuilder {
@@ -86,7 +86,7 @@ impl ProverBuilder {
             None => None,
         };
 
-        let db = DB::open_default(&self.cfg.db_path).map_err(|e| anyhow::anyhow!(e))?;
+        let db = Db::new(&self.cfg.db_path)?;
 
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
