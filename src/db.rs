@@ -20,16 +20,11 @@ impl Db {
     }
 
     pub fn get_proving_task_id_by_public_key(&self, public_key: String) -> Option<String> {
-        match self.db.get(fmt_proving_task_id_key(public_key)) {
-            Ok(value) => match value {
-                Some(v) => match String::from_utf8(v) {
-                    Ok(task_id) => Some(task_id),
-                    Err(e) => None,
-                },
-                None => None,
-            },
-            Err(e) => None,
-        }
+        self.db
+            .get(fmt_proving_task_id_key(public_key))
+            .ok()?
+            .map(|v| String::from_utf8(v).ok())
+            .flatten()
     }
 }
 
