@@ -22,6 +22,7 @@ target/
 
 config.json
 keys/
+db/
 
 # Helm chart related
 *.lock
