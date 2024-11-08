@@ -86,8 +86,6 @@ impl ProverBuilder {
             None => None,
         };
 
-        let db = Db::new(&self.cfg.db_path)?;
-
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
             circuit_version: self.cfg.prover.circuit_version,
@@ -96,7 +94,7 @@ impl ProverBuilder {
             proving_service: self.proving_service.unwrap(),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
-            db: db,
+            db: Db::new(&self.cfg.db_path)?,
         })
     }
 }
