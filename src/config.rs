@@ -8,6 +8,7 @@ use std::fs::File;
 pub struct Config {
     pub prover_name_prefix: String,
     pub keys_dir: String,
+    pub db_path: String,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
@@ -81,11 +82,13 @@ impl Config {
     }
 
     fn get_env_var(key: &str) -> anyhow::Result<Option<String>> {
-        Ok(std::env::var_os(key).map(|val| {
-            val.to_str()
-                .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
-                .map(String::from)
-        }).transpose()?)
+        Ok(std::env::var_os(key)
+            .map(|val| {
+                val.to_str()
+                    .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
+                    .map(String::from)
+            })
+            .transpose()?)
     }
 
     fn override_with_env(&mut self) -> anyhow::Result<()> {
@@ -117,6 +120,9 @@ impl Config {
             if let Some(cloud) = &mut self.prover.cloud {
                 cloud.api_key = val;
             }
+        }
+        if let Some(val) = Self::get_env_var("DB_PATH")? {
+            self.db_path = val;
         }
 
         Ok(())
