@@ -15,8 +15,12 @@ impl Db {
         &self,
         public_key: String,
     ) -> Option<GetTaskResponseData> {
-        todo!()
-        // self.db.get(fmt_coordinator_task_key(public_key))
+        self.db
+            .get(fmt_coordinator_task_key(public_key))
+            .ok()?
+            .as_ref()
+            .map(|v| serde_json::from_slice(v).ok())
+            .flatten()
     }
 
     pub fn get_proving_task_id_by_public_key(&self, public_key: String) -> Option<String> {
