@@ -90,8 +90,8 @@ impl Prover {
         // if let Some(task_id) = self.db.get(coordinator_client.prover_name.as_bytes()) {
         // let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
         // let proving_task = self.request_proving(&coordinator_task).await?;
-        if let Some(coordinator_task) = self.db.get(coordinator_client.key_signer.public_key().as_bytes()) {
-            let Some(proving_task_id) = self.db.get(coordinator_client.key_signer.public_key().as_bytes()) {
+        if let Some(coordinator_task) = self.db.get_coordinator_task_by_public_key(coordinator_client.key_signer.public_key()) {
+            let Some(proving_task_id) = self.db.get_proving_task_id_by_public_key(coordinator_client.key_signer.public_key()) {
                 self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
                 .await
             }
