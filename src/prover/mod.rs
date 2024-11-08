@@ -149,6 +149,7 @@ impl Prover {
         proving_service_task_id: String,
     ) -> anyhow::Result<()> {
         let prover_name = &coordinator_client.prover_name;
+        let public_key = &coordinator_client.key_signer.get_public_key();
         let task_type = coordinator_task.task_type;
         let coordinator_task_uuid = &coordinator_task.uuid;
         let coordinator_task_id = &coordinator_task.task_id;
@@ -172,6 +173,8 @@ impl Prover {
                         status = ?task.status,
                         "Task status update"
                     );
+                    self.db.set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
+                    self.db.set_proving_task_id_by_public_key(public_key.clone(), proving_service_task_id.clone());
                     sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
                 }
                 TaskStatus::Success => {
@@ -191,6 +194,8 @@ impl Prover {
                         None,
                     )
                     .await?;
+                    self.db.delete_coordinator_task_by_public_key(public_key.clone());
+                    self.db.delete_proving_task_id_by_public_key(public_key.clone());
                     break;
                 }
                 TaskStatus::Failed => {
@@ -212,6 +217,8 @@ impl Prover {
                         Some(task_err),
                     )
                     .await?;
+                    self.db.delete_coordinator_task_by_public_key(public_key.clone());
+                    self.db.delete_proving_task_id_by_public_key(public_key.clone());
                     break;
                 }
             }

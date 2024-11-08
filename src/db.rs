@@ -30,6 +30,22 @@ impl Db {
             .map(|v| String::from_utf8(v).ok())
             .flatten()
     }
+
+    pub fn set_coordinator_task_by_public_key(&self, public_key: String, coordinator_task: &GetTaskResponseData) {
+        self.db.put(fmt_coordinator_task_key(public_key), serde_json::to_vec(coordinator_task).unwrap()).unwrap();
+    }
+
+    pub fn set_proving_task_id_by_public_key(&self, public_key: String, proving_task_id: String) {
+        self.db.put(fmt_proving_task_id_key(public_key), proving_task_id.as_bytes()).unwrap();
+    }
+
+    pub fn delete_coordinator_task_by_public_key(&self, public_key: String) {
+        self.db.delete(fmt_coordinator_task_key(public_key)).unwrap();
+    }
+
+    pub fn delete_proving_task_id_by_public_key(&self, public_key: String) {
+        self.db.delete(fmt_proving_task_id_key(public_key)).unwrap();
+    }
 }
 
 fn fmt_coordinator_task_key(public_key: String) -> String {
