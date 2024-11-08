@@ -2,6 +2,7 @@ use super::CircuitType;
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
+    db::Db,
     prover::{
         proving_service::{GetVkRequest, ProvingService},
         Prover,
@@ -93,6 +94,7 @@ impl ProverBuilder {
             proving_service: self.proving_service.unwrap(),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
+            db: Db::new(&self.cfg.db_path)?,
         })
     }
 }

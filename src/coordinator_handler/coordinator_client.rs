@@ -10,7 +10,7 @@ pub struct CoordinatorClient {
     vks: Vec<String>,
     circuit_version: String,
     pub prover_name: String,
-    key_signer: KeySigner,
+    pub key_signer: KeySigner,
     api: Api,
     token: Mutex<Option<String>>,
 }
