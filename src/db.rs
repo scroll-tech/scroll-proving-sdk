@@ -29,9 +29,9 @@ impl Db {
 }
 
 fn fmt_coordinator_task_key(public_key: String) -> String {
-    todo!()
+    format!("last_coordinator_task_{}", public_key)
 }
 
 fn fmt_proving_task_id_key(public_key: String) -> String {
-    todo!()
+    format!("last_proving_task_id_{}", public_key)
 }
