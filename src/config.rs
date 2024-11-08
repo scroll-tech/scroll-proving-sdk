@@ -82,11 +82,13 @@ impl Config {
     }
 
     fn get_env_var(key: &str) -> anyhow::Result<Option<String>> {
-        Ok(std::env::var_os(key).map(|val| {
-            val.to_str()
-                .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
-                .map(String::from)
-        }).transpose()?)
+        Ok(std::env::var_os(key)
+            .map(|val| {
+                val.to_str()
+                    .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
+                    .map(String::from)
+            })
+            .transpose()?)
     }
 
     fn override_with_env(&mut self) -> anyhow::Result<()> {

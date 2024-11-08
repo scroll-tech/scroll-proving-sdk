@@ -1,8 +1,8 @@
 use super::CircuitType;
 use crate::{
     config::Config,
-    db::Db,
     coordinator_handler::{CoordinatorClient, KeySigner},
+    db::Db,
     prover::{
         proving_service::{GetVkRequest, ProvingService},
         Prover,
