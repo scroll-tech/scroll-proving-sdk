@@ -119,6 +119,9 @@ impl Config {
                 cloud.api_key = val;
             }
         }
+        if let Some(val) = Self::get_env_var("DB_PATH")? {
+            self.db_path = val;
+        }
 
         Ok(())
     }
