@@ -87,8 +87,6 @@ impl Prover {
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
         let public_key = coordinator_client.key_signer.get_public_key();
-        
-        // Try to resume existing task
         if let (Some(coordinator_task), Some(proving_task_id)) = (
             self.db.get_coordinator_task_by_public_key(public_key.clone()),
             self.db.get_proving_task_id_by_public_key(public_key),
@@ -97,8 +95,7 @@ impl Prover {
                 .handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
                 .await;
         }
-
-        // Start new task
+        
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
         let proving_task = self.request_proving(&coordinator_task).await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
