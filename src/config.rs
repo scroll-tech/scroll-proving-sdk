@@ -111,6 +111,9 @@ impl Config {
         if let Some(val) = Self::get_env_var("CIRCUIT_TYPE")? {
             self.prover.circuit_type = CircuitType::from_u8(val.parse()?);
         }
+        if let Some(val) = Self::get_env_var("N_WORKERS")? {
+            self.prover.n_workers = val.parse()?;
+        }
         if let Some(val) = Self::get_env_var("PROVING_SERVICE_BASE_URL")? {
             if let Some(cloud) = &mut self.prover.cloud {
                 cloud.base_url = val;
