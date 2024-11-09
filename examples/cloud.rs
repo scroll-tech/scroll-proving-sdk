@@ -367,12 +367,13 @@ impl CloudProver {
         Resp: serde::de::DeserializeOwned,
     {
         let url = self.build_url(method_class, method, query_params)?;
+        let url_str = url.as_str();
 
-        log::info!("[sindri client]: {:?}", url.as_str());
+        log::info!("[sindri client]: {url_str}");
 
         let resp_builder = match request_body {
-            Some(body) => self.client.post(url).body(body),
-            None => self.client.get(url),
+            Some(body) => self.client.post(url.clone()).body(body),
+            None => self.client.get(url.clone()),
         };
 
         let resp_builder = resp_builder
@@ -386,14 +387,14 @@ impl CloudProver {
         let status = response.status();
         if !(status >= http::status::StatusCode::OK && status <= http::status::StatusCode::ACCEPTED)
         {
-            // log::error!("[sindir client], {method}, status not ok: {}", status);
-            anyhow::bail!("[sindir client], {method}, status not ok: {}", status)
+            // log::error!("[sindir client]: {url_str}, status not ok: {}", status);
+            anyhow::bail!("[sindir client]: {url_str}, status not ok: {}", status)
         }
 
         let response_body = response.text().await?;
 
-        log::info!("[sindir client], {method}, received response");
-        log::debug!("[sindir client], {method}, response: {response_body}");
+        log::info!("[sindir client]: {url_str}, received response");
+        log::debug!("[sindir client]: {url_str}, response: {response_body}");
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 }
