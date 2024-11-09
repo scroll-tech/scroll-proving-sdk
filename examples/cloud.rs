@@ -395,7 +395,11 @@ impl CloudProver {
 
         log::info!("[sindir client]: {url_str}, received response");
         log::debug!("[sindir client]: {url_str}, response: {response_body}");
-        serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
+
+        let mut deserializer = serde_json::Deserializer::from_str(&response_body);
+        deserializer.disable_recursion_limit();
+        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+        serde::Deserialize::deserialize(deserializer).map_err(|e| anyhow::anyhow!(e))
     }
 }
 
