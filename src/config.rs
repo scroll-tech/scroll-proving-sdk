@@ -8,7 +8,7 @@ use std::fs::File;
 pub struct Config {
     pub prover_name_prefix: String,
     pub keys_dir: String,
-    pub db_path: String,
+    pub db_path: Option<String>,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
@@ -125,7 +125,7 @@ impl Config {
             }
         }
         if let Some(val) = Self::get_env_var("DB_PATH")? {
-            self.db_path = val;
+            self.db_path = Option::from(val);
         }
 
         Ok(())

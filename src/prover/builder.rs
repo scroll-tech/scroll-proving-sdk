@@ -86,6 +86,10 @@ impl ProverBuilder {
             None => None,
         };
 
+        let db_path = self.cfg.db_path.unwrap_or_else(|| {
+            panic!("Missing database path");
+        });
+
         Ok(Prover {
             circuit_type: self.cfg.prover.circuit_type,
             circuit_version: self.cfg.prover.circuit_version,
@@ -94,7 +98,7 @@ impl ProverBuilder {
             proving_service: self.proving_service.unwrap(),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
-            db: Db::new(&self.cfg.db_path)?,
+            db: Db::new(&db_path)?,
         })
     }
 }
