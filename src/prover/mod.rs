@@ -275,6 +275,10 @@ impl Prover {
             },
         };
 
+        if prover_height.is_none() {
+            log::error!("Failed to get prover height from l2geth_client");
+        }
+
         GetTaskRequest {
             task_types: vec![self.circuit_type],
             prover_height,
