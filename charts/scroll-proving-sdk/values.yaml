@@ -84,5 +84,6 @@ scrollConfig: |
 #       "retry_wait_time_sec": 5,
 #       "connection_timeout_sec": 60
 #     }
-#   }
+#   },
+#   "db_path": "db"
 #  }
