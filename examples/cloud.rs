@@ -32,7 +32,7 @@ impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
-    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
     async fn prove(&self, req: ProveRequest) -> ProveResponse {

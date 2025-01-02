@@ -22,7 +22,7 @@ pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
-    circuit_type: CircuitType,
+    circuit_types: Vec<CircuitType>,
     circuit_version: String,
     coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
@@ -35,7 +35,7 @@ pub struct Prover {
 impl Prover {
     pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
-        if self.circuit_type == CircuitType::Chunk {
+        if self.circuit_types.contains(&CircuitType::Chunk)  {
             assert!(self.l2geth_client.is_some());
         }
 
@@ -276,7 +276,7 @@ impl Prover {
         };
 
         GetTaskRequest {
-            task_types: vec![self.circuit_type],
+            task_types: self.circuit_types.clone(),
             prover_height,
         }
     }
@@ -286,9 +286,9 @@ impl Prover {
         task: &GetTaskResponseData,
     ) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
-            task.task_type == self.circuit_type,
-            "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
-            self.circuit_type,
+            self.circuit_types.contains(&task.task_type),
+            "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
+            self.circuit_types,
             task.task_type,
             task.uuid,
             task.task_id

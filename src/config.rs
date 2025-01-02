@@ -35,7 +35,7 @@ pub struct L2GethConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProverConfig {
-    pub circuit_type: CircuitType,
+    pub circuit_types: Vec<CircuitType>,
     pub circuit_version: String,
     pub n_workers: usize,
     pub cloud: Option<CloudProverConfig>,
@@ -108,8 +108,19 @@ impl Config {
                 l2geth.endpoint = val;
             }
         }
-        if let Some(val) = Self::get_env_var("CIRCUIT_TYPE")? {
-            self.prover.circuit_type = CircuitType::from_u8(val.parse()?);
+        if let Some(val) = Self::get_env_var("CIRCUIT_TYPES")? {
+            let values_vec: Vec<&str> = val.trim_matches(|c| c == '[' || c == ']').split(',').collect();
+            
+            self.prover.circuit_types = values_vec.iter().map(move |value| {
+                match value.parse::<u8>() {
+                    Ok(num) => CircuitType::from_u8(num),
+                    Err(e) => {
+                        eprintln!("Failed to parse circuit type: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            })
+            .collect::<Vec<CircuitType>>();
         }
         if let Some(val) = Self::get_env_var("N_WORKERS")? {
             self.prover.n_workers = val.parse()?;

@@ -4,18 +4,18 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait ProvingService {
     fn is_local(&self) -> bool;
-    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse;
+    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse;
     async fn prove(&self, req: ProveRequest) -> ProveResponse;
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
 pub struct GetVkRequest {
-    pub circuit_type: CircuitType,
+    pub circuit_types: Vec<CircuitType>,
     pub circuit_version: String,
 }
 
 pub struct GetVkResponse {
-    pub vk: String,
+    pub vks: Vec<String>,
     pub error: Option<String>,
 }
 

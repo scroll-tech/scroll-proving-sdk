@@ -40,19 +40,19 @@ impl ProverBuilder {
             anyhow::bail!("cannot use multiple workers with local proving service");
         }
 
-        if self.cfg.prover.circuit_type == CircuitType::Chunk && self.cfg.l2geth.is_none() {
+        if self.cfg.prover.circuit_types.contains(&CircuitType::Chunk) && self.cfg.l2geth.is_none() {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
         let get_vk_request = GetVkRequest {
-            circuit_type: self.cfg.prover.circuit_type,
+            circuit_types: self.cfg.prover.circuit_types.clone(),
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };
         let get_vk_response = self
             .proving_service
             .as_ref()
             .unwrap()
-            .get_vk(get_vk_request)
+            .get_vks(get_vk_request)
             .await;
         if let Some(error) = get_vk_response.error {
             anyhow::bail!("failed to get vk: {}", error);
@@ -67,12 +67,13 @@ impl ProverBuilder {
         let key_signers =
             key_signers.map_err(|e| anyhow::anyhow!("cannot create key_signer, err: {e}"))?;
 
+        let circuit_types_cloned = self.cfg.prover.circuit_types.clone();
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
-                    self.cfg.prover.circuit_type,
-                    vec![get_vk_response.vk.clone()],
+                    circuit_types_cloned.clone(),
+                    get_vk_response.vks.clone(),
                     self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
@@ -91,7 +92,7 @@ impl ProverBuilder {
         });
 
         Ok(Prover {
-            circuit_type: self.cfg.prover.circuit_type,
+            circuit_types: self.cfg.prover.circuit_types.clone(),
             circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
             l2geth_client,

@@ -6,7 +6,7 @@ use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
 use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
-    circuit_type: CircuitType,
+    circuit_types: Vec<CircuitType>,
     vks: Vec<String>,
     circuit_version: String,
     pub prover_name: String,
@@ -18,7 +18,7 @@ pub struct CoordinatorClient {
 impl CoordinatorClient {
     pub fn new(
         cfg: CoordinatorConfig,
-        circuit_type: CircuitType,
+        circuit_types: Vec<CircuitType>,
         vks: Vec<String>,
         circuit_version: String,
         prover_name: String,
@@ -26,7 +26,7 @@ impl CoordinatorClient {
     ) -> anyhow::Result<Self> {
         let api = Api::new(cfg)?;
         let client = Self {
-            circuit_type,
+            circuit_types,
             vks,
             circuit_version,
             prover_name,
@@ -107,10 +107,13 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
-        let prover_types = match self.circuit_type {
-            CircuitType::Batch | CircuitType::Bundle => vec![CircuitType::Batch], // to conform to coordinator logic
-            _ => vec![self.circuit_type],
-        };
+        let mut prover_types = vec![];
+        if self.circuit_types.contains(&CircuitType::Bundle) || self.circuit_types.contains(&CircuitType::Batch) {
+            prover_types.push(CircuitType::Batch)
+        }
+        if self.circuit_types.contains(&CircuitType::Chunk) {
+            prover_types.push(CircuitType::Chunk)
+        }
 
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),

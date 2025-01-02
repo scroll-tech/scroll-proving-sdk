@@ -28,7 +28,7 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
     async fn prove(&self, req: ProveRequest) -> ProveResponse {
