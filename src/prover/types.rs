@@ -51,3 +51,9 @@ impl<'de> Deserialize<'de> for CircuitType {
         Ok(CircuitType::from_u8(v))
     }
 }
+
+impl Default for CircuitType {
+    fn default() -> Self {
+        Self::Undefined
+    }
+}
