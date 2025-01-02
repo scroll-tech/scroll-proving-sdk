@@ -16,7 +16,7 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn new(cfg: CoordinatorConfig) -> anyhow::Result<Self> {
+    pub fn new(cfg: CoordinatorConfig) -> anyhow::Result<Self> { 
         let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
             .retry_bounds(retry_wait_duration / 2, retry_wait_duration)

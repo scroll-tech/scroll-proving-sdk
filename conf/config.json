@@ -11,7 +11,7 @@
     "endpoint": "https://l2-rpc.scrollsdk"
   },
   "prover": {
-    "circuit_type": 3,
+    "circuit_type": [3],
     "circuit_version": "v0.13.1",
     "n_workers": 1,
     "cloud": {
