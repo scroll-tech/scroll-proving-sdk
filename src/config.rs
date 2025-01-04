@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
+use anyhow::{bail, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -53,35 +54,46 @@ pub struct CloudProverConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalProverConfig {
-    // TODO:
-    // params path
-    // assets path
-    // DB config
+    pub prover_name: String,
+    pub keystore_path: String,
+    pub keystore_password: String,
+    pub db_path: String,
+    pub low_version_circuit: CircuitConfig,
+    pub high_version_circuit: CircuitConfig,
+    pub coordinator: CoordinatorConfig,
+    pub l2geth: Option<L2GethConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CircuitConfig {
+    pub hard_fork_name: String,
+    pub params_path: String,
+    pub assets_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
 
 impl Config {
-    pub fn from_reader<R>(reader: R) -> anyhow::Result<Self>
+    pub fn from_reader<R>(reader: R) -> Result<Self>
     where
         R: std::io::Read,
     {
         serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
     }
 
-    pub fn from_file(file_name: String) -> anyhow::Result<Self> {
+    pub fn from_file(file_name: String) -> Result<Self> {
         let file = File::open(file_name)?;
         Config::from_reader(&file)
     }
 
-    pub fn from_file_and_env(file_name: String) -> anyhow::Result<Self> {
+    pub fn from_file_and_env(file_name: String) -> Result<Self> {
         let mut cfg = Config::from_file(file_name)?;
         cfg.override_with_env()?;
         Ok(cfg)
     }
 
-    fn get_env_var(key: &str) -> anyhow::Result<Option<String>> {
+    fn get_env_var(key: &str) -> Result<Option<String>> {
         Ok(std::env::var_os(key)
             .map(|val| {
                 val.to_str()
@@ -91,7 +103,7 @@ impl Config {
             .transpose()?)
     }
 
-    fn override_with_env(&mut self) -> anyhow::Result<()> {
+    fn override_with_env(&mut self) -> Result<()> {
         dotenv().ok();
 
         if let Some(val) = Self::get_env_var("PROVER_NAME_PREFIX")? {
@@ -140,5 +152,70 @@ impl Config {
         }
 
         Ok(())
+    }
+}
+
+
+impl LocalProverConfig {
+    pub fn from_reader<R>(reader: R) -> Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub fn from_file(file_name: String) -> Result<Self> {
+        let file = File::open(file_name)?;
+        LocalProverConfig::from_reader(&file)
+    }
+}
+
+static SCROLL_PROVER_ASSETS_DIR_ENV_NAME: &str = "SCROLL_PROVER_ASSETS_DIR";
+static mut SCROLL_PROVER_ASSETS_DIRS: Vec<String> = vec![];
+
+#[derive(Debug)]
+pub struct AssetsDirEnvConfig {}
+
+impl AssetsDirEnvConfig {
+    pub fn init() -> Result<()> {
+        let value = std::env::var(SCROLL_PROVER_ASSETS_DIR_ENV_NAME)?;
+        let dirs: Vec<&str> = value.split(',').collect();
+        if dirs.len() != 2 {
+            bail!("env variable SCROLL_PROVER_ASSETS_DIR value must be 2 parts seperated by comma.")
+        }
+        unsafe {
+            SCROLL_PROVER_ASSETS_DIRS = dirs.into_iter().map(|s| s.to_string()).collect();
+            log::info!(
+                "init SCROLL_PROVER_ASSETS_DIRS: {:?}",
+                SCROLL_PROVER_ASSETS_DIRS
+            );
+        }
+        Ok(())
+    }
+
+    pub fn enable_first() {
+        unsafe {
+            log::info!(
+                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
+                &SCROLL_PROVER_ASSETS_DIRS[0]
+            );
+            std::env::set_var(
+                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
+                &SCROLL_PROVER_ASSETS_DIRS[0],
+            );
+        }
+    }
+
+    pub fn enable_second() {
+        unsafe {
+            log::info!(
+                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
+                &SCROLL_PROVER_ASSETS_DIRS[1]
+            );
+            std::env::set_var(
+                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
+                &SCROLL_PROVER_ASSETS_DIRS[1],
+            );
+        }
     }
 }
