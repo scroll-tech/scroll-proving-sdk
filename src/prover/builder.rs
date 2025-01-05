@@ -40,7 +40,8 @@ impl ProverBuilder {
             anyhow::bail!("cannot use multiple workers with local proving service");
         }
 
-        if self.cfg.prover.circuit_types.contains(&CircuitType::Chunk) && self.cfg.l2geth.is_none() {
+        if self.cfg.prover.circuit_types.contains(&CircuitType::Chunk) && self.cfg.l2geth.is_none()
+        {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 

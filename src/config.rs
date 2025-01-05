@@ -1,9 +1,9 @@
 use crate::prover::CircuitType;
+use anyhow::{bail, Result};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
-use anyhow::{bail, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -94,13 +94,13 @@ impl Config {
     }
 
     fn get_env_var(key: &str) -> Result<Option<String>> {
-        Ok(std::env::var_os(key)
+        std::env::var_os(key)
             .map(|val| {
                 val.to_str()
                     .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
                     .map(String::from)
             })
-            .transpose()?)
+            .transpose()
     }
 
     fn override_with_env(&mut self) -> Result<()> {
@@ -121,18 +121,21 @@ impl Config {
             }
         }
         if let Some(val) = Self::get_env_var("CIRCUIT_TYPES")? {
-            let values_vec: Vec<&str> = val.trim_matches(|c| c == '[' || c == ']').split(',').collect();
-            
-            self.prover.circuit_types = values_vec.iter().map(move |value| {
-                match value.parse::<u8>() {
+            let values_vec: Vec<&str> = val
+                .trim_matches(|c| c == '[' || c == ']')
+                .split(',')
+                .collect();
+
+            self.prover.circuit_types = values_vec
+                .iter()
+                .map(move |value| match value.parse::<u8>() {
                     Ok(num) => CircuitType::from_u8(num),
                     Err(e) => {
                         eprintln!("Failed to parse circuit type: {}", e);
                         std::process::exit(1);
                     }
-                }
-            })
-            .collect::<Vec<CircuitType>>();
+                })
+                .collect::<Vec<CircuitType>>();
         }
         if let Some(val) = Self::get_env_var("N_WORKERS")? {
             self.prover.n_workers = val.parse()?;
@@ -154,7 +157,6 @@ impl Config {
         Ok(())
     }
 }
-
 
 impl LocalProverConfig {
     pub fn from_reader<R>(reader: R) -> Result<Self>

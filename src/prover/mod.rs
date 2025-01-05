@@ -35,7 +35,7 @@ pub struct Prover {
 impl Prover {
     pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
-        if self.circuit_types.contains(&CircuitType::Chunk)  {
+        if self.circuit_types.contains(&CircuitType::Chunk) {
             assert!(self.l2geth_client.is_some());
         }
 

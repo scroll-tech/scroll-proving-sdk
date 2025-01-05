@@ -108,7 +108,9 @@ impl CoordinatorClient {
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
         let mut prover_types = vec![];
-        if self.circuit_types.contains(&CircuitType::Bundle) || self.circuit_types.contains(&CircuitType::Batch) {
+        if self.circuit_types.contains(&CircuitType::Bundle)
+            || self.circuit_types.contains(&CircuitType::Batch)
+        {
             prover_types.push(CircuitType::Batch)
         }
         if self.circuit_types.contains(&CircuitType::Chunk) {
