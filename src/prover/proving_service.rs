@@ -19,6 +19,7 @@ pub struct GetVkResponse {
     pub error: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct ProveRequest {
     pub circuit_type: CircuitType,
     pub circuit_version: String,
