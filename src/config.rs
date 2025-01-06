@@ -54,14 +54,8 @@ pub struct CloudProverConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalProverConfig {
-    pub prover_name: String,
-    pub keystore_path: String,
-    pub keystore_password: String,
-    pub db_path: String,
     pub low_version_circuit: CircuitConfig,
     pub high_version_circuit: CircuitConfig,
-    pub coordinator: CoordinatorConfig,
-    pub l2geth: Option<L2GethConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
