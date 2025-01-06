@@ -20,6 +20,18 @@
       "retry_count": 3,
       "retry_wait_time_sec": 5,
       "connection_timeout_sec": 60
+    },
+    "local": {
+      "low_version_circuit": {
+        "hard_fork_name": "bernoulli",
+        "params_path": "params",
+        "assets_path": "assets"
+      },
+      "high_version_circuit": {
+        "hard_fork_name": "curie",
+        "params_path": "params",
+        "assets_path": "assets"
+      },
     }
   },
   "db_path": "db"
