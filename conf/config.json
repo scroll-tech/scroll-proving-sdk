@@ -31,7 +31,7 @@
         "hard_fork_name": "curie",
         "params_path": "params",
         "assets_path": "assets"
-      },
+      }
     }
   },
   "db_path": "db"
