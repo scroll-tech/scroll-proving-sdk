@@ -17,10 +17,6 @@ pub struct Config {
     pub health_listener_addr: String,
 }
 
-fn default_health_listener_addr() -> String {
-    "0.0.0.0:80".to_string()
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoordinatorConfig {
     pub base_url: String,
@@ -38,6 +34,7 @@ pub struct L2GethConfig {
 pub struct ProverConfig {
     pub circuit_types: Vec<CircuitType>,
     pub circuit_version: String,
+    #[serde(default = "default_n_workers")]
     pub n_workers: usize,
     pub cloud: Option<CloudProverConfig>,
     pub local: Option<LocalProverConfig>,
@@ -67,6 +64,14 @@ pub struct CircuitConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
+
+fn default_health_listener_addr() -> String {
+    "0.0.0.0:80".to_string()
+}
+
+fn default_n_workers() -> usize {
+    1
+}
 
 impl Config {
     pub fn from_reader<R>(reader: R) -> Result<Self>
@@ -130,9 +135,6 @@ impl Config {
                     }
                 })
                 .collect::<Vec<CircuitType>>();
-        }
-        if let Some(val) = Self::get_env_var("N_WORKERS")? {
-            self.prover.n_workers = val.parse()?;
         }
         if let Some(val) = Self::get_env_var("PROVING_SERVICE_BASE_URL")? {
             if let Some(cloud) = &mut self.prover.cloud {

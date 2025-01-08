@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
-    let cfg: Config = Config::from_file(args.config_file)?;
+    let cfg: Config = Config::from_file_and_env(args.config_file)?;
     let local_prover = LocalProver::new(cfg.prover.local.clone().unwrap());
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(local_prover))
