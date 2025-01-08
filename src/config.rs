@@ -118,6 +118,7 @@ impl Config {
             let values_vec: Vec<&str> = val
                 .trim_matches(|c| c == '[' || c == ']')
                 .split(',')
+                .map(|s| s.trim())
                 .collect();
 
             self.prover.circuit_types = values_vec
