@@ -1,5 +1,5 @@
 use crate::prover::CircuitType;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, Result};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -73,7 +73,7 @@ impl Config {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -91,7 +91,7 @@ impl Config {
         std::env::var_os(key)
             .map(|val| {
                 val.to_str()
-                    .ok_or_else(|| anyhow::anyhow!("{key} env var is not valid UTF-8"))
+                    .ok_or_else(|| anyhow!("{key} env var is not valid UTF-8"))
                     .map(String::from)
             })
             .transpose()
@@ -122,11 +122,10 @@ impl Config {
 
             self.prover.circuit_types = values_vec
                 .iter()
-                .map(move |value| match value.parse::<u8>() {
+                .map(|value| match value.parse::<u8>() {
                     Ok(num) => CircuitType::from_u8(num),
                     Err(e) => {
-                        eprintln!("Failed to parse circuit type: {}", e);
-                        std::process::exit(1);
+                        panic!("Failed to parse circuit type: {}", e);
                     }
                 })
                 .collect::<Vec<CircuitType>>();
@@ -157,61 +156,11 @@ impl LocalProverConfig {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
         let file = File::open(file_name)?;
         LocalProverConfig::from_reader(&file)
-    }
-}
-
-static SCROLL_PROVER_ASSETS_DIR_ENV_NAME: &str = "SCROLL_PROVER_ASSETS_DIR";
-static mut SCROLL_PROVER_ASSETS_DIRS: Vec<String> = vec![];
-
-#[derive(Debug)]
-pub struct AssetsDirEnvConfig {}
-
-impl AssetsDirEnvConfig {
-    pub fn init() -> Result<()> {
-        let value = std::env::var(SCROLL_PROVER_ASSETS_DIR_ENV_NAME)?;
-        let dirs: Vec<&str> = value.split(',').collect();
-        if dirs.len() != 2 {
-            bail!("env variable SCROLL_PROVER_ASSETS_DIR value must be 2 parts seperated by comma.")
-        }
-        unsafe {
-            SCROLL_PROVER_ASSETS_DIRS = dirs.into_iter().map(|s| s.to_string()).collect();
-            log::info!(
-                "init SCROLL_PROVER_ASSETS_DIRS: {:?}",
-                SCROLL_PROVER_ASSETS_DIRS
-            );
-        }
-        Ok(())
-    }
-
-    pub fn enable_first() {
-        unsafe {
-            log::info!(
-                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
-                &SCROLL_PROVER_ASSETS_DIRS[0]
-            );
-            std::env::set_var(
-                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
-                &SCROLL_PROVER_ASSETS_DIRS[0],
-            );
-        }
-    }
-
-    pub fn enable_second() {
-        unsafe {
-            log::info!(
-                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
-                &SCROLL_PROVER_ASSETS_DIRS[1]
-            );
-            std::env::set_var(
-                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
-                &SCROLL_PROVER_ASSETS_DIRS[1],
-            );
-        }
     }
 }

@@ -68,12 +68,11 @@ impl ProverBuilder {
         let key_signers =
             key_signers.map_err(|e| anyhow::anyhow!("cannot create key_signer, err: {e}"))?;
 
-        let circuit_types_cloned = self.cfg.prover.circuit_types.clone();
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
-                    circuit_types_cloned.clone(),
+                    self.cfg.prover.circuit_types.clone(),
                     get_vk_response.vks.clone(),
                     self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
