@@ -70,11 +70,17 @@ impl ProverBuilder {
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
+                let prover_name = if self.proving_service.as_ref().unwrap().is_local() {
+                    self.cfg.prover_name_prefix.clone()
+                } else {
+                    format!("{}{}", self.cfg.prover_name_prefix, i)
+                };
+
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_types.clone(),
                     get_vk_response.vks.clone(),
-                    format!("{}{}", self.cfg.prover_name_prefix, i),
+                    prover_name,
                     key_signers[i].clone(),
                 )
             })
