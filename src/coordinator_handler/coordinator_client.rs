@@ -8,7 +8,6 @@ use tokio::sync::{Mutex, MutexGuard};
 pub struct CoordinatorClient {
     circuit_types: Vec<CircuitType>,
     vks: Vec<String>,
-    circuit_version: String,
     pub prover_name: String,
     pub key_signer: KeySigner,
     api: Api,
@@ -20,7 +19,6 @@ impl CoordinatorClient {
         cfg: CoordinatorConfig,
         circuit_types: Vec<CircuitType>,
         vks: Vec<String>,
-        circuit_version: String,
         prover_name: String,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
@@ -28,7 +26,6 @@ impl CoordinatorClient {
         let client = Self {
             circuit_types,
             vks,
-            circuit_version,
             prover_name,
             key_signer,
             api,
@@ -120,7 +117,7 @@ impl CoordinatorClient {
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
             prover_name: self.prover_name.clone(),
-            prover_version: get_version(&self.circuit_version).to_string(),
+            prover_version: get_version().to_string(),
             prover_types,
             vks: self.vks.clone(),
         };

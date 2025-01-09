@@ -74,7 +74,6 @@ impl ProverBuilder {
                     self.cfg.coordinator.clone(),
                     self.cfg.prover.circuit_types.clone(),
                     get_vk_response.vks.clone(),
-                    self.cfg.prover.circuit_version.clone(),
                     format!("{}{}", self.cfg.prover_name_prefix, i),
                     key_signers[i].clone(),
                 )
