@@ -1,4 +1,4 @@
-use super::CircuitType;
+use super::{CircuitType, ProverProviderType};
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
@@ -8,6 +8,7 @@ use crate::{
         Prover,
     },
     tracing_handler::L2gethClient,
+    utils::format_cloud_prover_name,
 };
 use std::path::PathBuf;
 
@@ -59,6 +60,12 @@ impl ProverBuilder {
             anyhow::bail!("failed to get vk: {}", error);
         }
 
+        let prover_provider_type = if self.proving_service.as_ref().unwrap().is_local() {
+            ProverProviderType::Internal
+        } else {
+            ProverProviderType::External
+        };
+
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 let key_path = PathBuf::from(&self.cfg.keys_dir).join(i.to_string());
@@ -73,7 +80,7 @@ impl ProverBuilder {
                 let prover_name = if self.proving_service.as_ref().unwrap().is_local() {
                     self.cfg.prover_name_prefix.clone()
                 } else {
-                    format!("{}{}", self.cfg.prover_name_prefix, i)
+                    format_cloud_prover_name(self.cfg.prover_name_prefix.clone(), i)
                 };
 
                 CoordinatorClient::new(
@@ -81,6 +88,7 @@ impl ProverBuilder {
                     self.cfg.prover.circuit_types.clone(),
                     get_vk_response.vks.clone(),
                     prover_name,
+                    prover_provider_type,
                     key_signers[i].clone(),
                 )
             })

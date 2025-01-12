@@ -2,13 +2,18 @@ use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
-use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
+use crate::{
+    config::CoordinatorConfig,
+    prover::{CircuitType, ProverProviderType},
+    utils::get_version,
+};
 use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
     circuit_types: Vec<CircuitType>,
     vks: Vec<String>,
     pub prover_name: String,
+    pub prover_provider_type: ProverProviderType,
     pub key_signer: KeySigner,
     api: Api,
     token: Mutex<Option<String>>,
@@ -20,6 +25,7 @@ impl CoordinatorClient {
         circuit_types: Vec<CircuitType>,
         vks: Vec<String>,
         prover_name: String,
+        prover_provider_type: ProverProviderType,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
         let api = Api::new(cfg)?;
@@ -27,6 +33,7 @@ impl CoordinatorClient {
             circuit_types,
             vks,
             prover_name,
+            prover_provider_type,
             key_signer,
             api,
             token: Mutex::new(None),
@@ -116,8 +123,9 @@ impl CoordinatorClient {
 
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
-            prover_name: self.prover_name.clone(),
             prover_version: get_version().to_string(),
+            prover_name: self.prover_name.clone(),
+            prover_provider_type: self.prover_provider_type,
             prover_types,
             vks: self.vks.clone(),
         };

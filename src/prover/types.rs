@@ -52,3 +52,52 @@ impl<'de> Deserialize<'de> for CircuitType {
         Ok(CircuitType::from_u8(v))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum ProverProviderType {
+    #[default]
+    Undefined,
+    Internal,
+    External,
+}
+
+impl ProverProviderType {
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            1 => ProverProviderType::Internal,
+            2 => ProverProviderType::External,
+            _ => ProverProviderType::Undefined,
+        }
+    }
+
+    pub fn to_u8(self) -> u8 {
+        match self {
+            ProverProviderType::Undefined => 0,
+            ProverProviderType::Internal => 1,
+            ProverProviderType::External => 2,
+        }
+    }
+}
+
+impl Serialize for ProverProviderType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ProverProviderType::Undefined => serializer.serialize_u8(0),
+            ProverProviderType::Internal => serializer.serialize_u8(1),
+            ProverProviderType::External => serializer.serialize_u8(2),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ProverProviderType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: u8 = u8::deserialize(deserializer)?;
+        Ok(ProverProviderType::from_u8(v))
+    }
+}

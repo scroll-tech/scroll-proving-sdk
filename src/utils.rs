@@ -32,3 +32,8 @@ pub fn init_tracing() {
         .try_init()
         .expect("Failed to initialize tracing subscriber");
 }
+
+pub fn format_cloud_prover_name(provider_name: String, index: usize) -> String {
+    // note the name of cloud prover is in fact in the format of "cloud_prover_{provider-name}_index",
+    format!("cloud_prover_{}_{}", provider_name, index)
+}

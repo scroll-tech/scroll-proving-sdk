@@ -1,5 +1,8 @@
 use super::error::ErrorCode;
-use crate::{prover::CircuitType, tracing_handler::CommonHash};
+use crate::{
+    prover::{CircuitType, ProverProviderType},
+    tracing_handler::CommonHash,
+};
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -15,6 +18,7 @@ pub struct LoginMessage {
     pub challenge: String,
     pub prover_name: String,
     pub prover_version: String,
+    pub prover_provider_type: ProverProviderType,
     pub prover_types: Vec<CircuitType>,
     pub vks: Vec<String>,
 }

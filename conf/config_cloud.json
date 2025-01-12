@@ -1,5 +1,5 @@
 {
-    "prover_name_prefix": "cloud_prover_",
+    "prover_name_prefix": "prover_name",
     "keys_dir": "keys",
     "coordinator": {
       "base_url": "https://coordinator-api.scrollsdk",
