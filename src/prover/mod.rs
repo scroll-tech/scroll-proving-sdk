@@ -87,11 +87,15 @@ impl Prover {
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
         let public_key = coordinator_client.key_signer.get_public_key();
-        if let (Some(coordinator_task), Some(proving_task_id)) = (
+        if let (Some(coordinator_task), Some(mut proving_task_id)) = (
             self.db
                 .get_coordinator_task_by_public_key(public_key.clone()),
             self.db.get_proving_task_id_by_public_key(public_key),
         ) {
+            if self.proving_service.is_local() {
+                let proving_task = self.request_proving(&coordinator_task).await?;
+                proving_task_id = proving_task.task_id
+            }
             return self
                 .handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
                 .await;
