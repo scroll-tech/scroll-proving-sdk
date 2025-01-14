@@ -2,7 +2,11 @@ use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
-use crate::{config::CoordinatorConfig, prover::{CircuitType, ProverProviderType}, utils::get_version};
+use crate::{
+    config::CoordinatorConfig,
+    prover::{CircuitType, ProverProviderType},
+    utils::get_version,
+};
 use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
