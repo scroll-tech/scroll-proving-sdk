@@ -27,5 +27,3 @@ db/
 *.lock
 *.tgz
 .vscode/
-
-.DS_Store
