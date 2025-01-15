@@ -125,7 +125,7 @@ impl CoordinatorClient {
             challenge: login_response_data.token.clone(),
             prover_version: get_version().to_string(),
             prover_name: self.prover_name.clone(),
-            prover_provider_type: Some(self.prover_provider_type),
+            prover_provider_type: None,
             prover_types,
             vks: self.vks.clone(),
         };
