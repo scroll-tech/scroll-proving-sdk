@@ -59,7 +59,6 @@ pub enum ProverProviderType {
     Undefined,
     Internal,
     External,
-    Remote,
 }
 
 impl ProverProviderType {
@@ -76,7 +75,6 @@ impl ProverProviderType {
             ProverProviderType::Undefined => 0,
             ProverProviderType::Internal => 1,
             ProverProviderType::External => 2,
-            ProverProviderType::Remote => 3,
         }
     }
 }
@@ -90,7 +88,6 @@ impl Serialize for ProverProviderType {
             ProverProviderType::Undefined => serializer.serialize_u8(0),
             ProverProviderType::Internal => serializer.serialize_u8(1),
             ProverProviderType::External => serializer.serialize_u8(2),
-            ProverProviderType::Remote => serializer.serialize_u8(3),
         }
     }
 }
