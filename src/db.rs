@@ -11,7 +11,29 @@ impl Db {
         Ok(Self { db })
     }
 
-    pub fn get_coordinator_task_by_public_key(
+    pub fn get_task(&self, public_key: String) -> (Option<GetTaskResponseData>, Option<String>) {
+        (
+            self.get_coordinator_task_by_public_key(public_key.clone()),
+            self.get_proving_task_id_by_public_key(public_key),
+        )
+    }
+
+    pub fn set_task(
+        &self,
+        public_key: String,
+        coordinator_task: &GetTaskResponseData,
+        proving_task_id: String,
+    ) {
+        self.set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
+        self.set_proving_task_id_by_public_key(public_key, proving_task_id);
+    }
+
+    pub fn delete_task(&self, public_key: String) {
+        self.delete_coordinator_task_by_public_key(public_key.clone());
+        self.delete_proving_task_id_by_public_key(public_key);
+    }
+
+    fn get_coordinator_task_by_public_key(
         &self,
         public_key: String,
     ) -> Option<GetTaskResponseData> {
@@ -22,14 +44,14 @@ impl Db {
             .and_then(|v| serde_json::from_slice(v).ok())
     }
 
-    pub fn get_proving_task_id_by_public_key(&self, public_key: String) -> Option<String> {
+    fn get_proving_task_id_by_public_key(&self, public_key: String) -> Option<String> {
         self.db
             .get(fmt_proving_task_id_key(public_key))
             .ok()?
             .and_then(|v| String::from_utf8(v).ok())
     }
 
-    pub fn set_coordinator_task_by_public_key(
+    fn set_coordinator_task_by_public_key(
         &self,
         public_key: String,
         coordinator_task: &GetTaskResponseData,
@@ -38,18 +60,18 @@ impl Db {
             .map(|bytes| self.db.put(fmt_coordinator_task_key(public_key), bytes));
     }
 
-    pub fn set_proving_task_id_by_public_key(&self, public_key: String, proving_task_id: String) {
+    fn set_proving_task_id_by_public_key(&self, public_key: String, proving_task_id: String) {
         let _ = self.db.put(
             fmt_proving_task_id_key(public_key),
             proving_task_id.as_bytes(),
         );
     }
 
-    pub fn delete_coordinator_task_by_public_key(&self, public_key: String) {
+    fn delete_coordinator_task_by_public_key(&self, public_key: String) {
         let _ = self.db.delete(fmt_coordinator_task_key(public_key));
     }
 
-    pub fn delete_proving_task_id_by_public_key(&self, public_key: String) {
+    fn delete_proving_task_id_by_public_key(&self, public_key: String) {
         let _ = self.db.delete(fmt_proving_task_id_key(public_key));
     }
 }

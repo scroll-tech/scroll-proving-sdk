@@ -87,13 +87,13 @@ impl Prover {
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
         let public_key = coordinator_client.key_signer.get_public_key();
-        if let (Some(coordinator_task), Some(mut proving_task_id)) = (
-            self.db
-                .get_coordinator_task_by_public_key(public_key.clone()),
-            self.db.get_proving_task_id_by_public_key(public_key),
-        ) {
+        if let (Some(coordinator_task), Some(mut proving_task_id)) =
+            self.db.get_task(public_key.clone())
+        {
             if self.proving_service.is_local() {
-                let proving_task = self.request_proving(&coordinator_task).await?;
+                let proving_task = self
+                    .request_proving(&coordinator_task, public_key.clone())
+                    .await?;
                 proving_task_id = proving_task.task_id
             }
             return self
@@ -102,7 +102,7 @@ impl Prover {
         }
 
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
-        let proving_task = self.request_proving(&coordinator_task).await?;
+        let proving_task = self.request_proving(&coordinator_task, public_key).await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
     }
@@ -130,7 +130,16 @@ impl Prover {
     async fn request_proving(
         &self,
         coordinator_task: &GetTaskResponseData,
+        public_key: String,
     ) -> anyhow::Result<proving_service::ProveResponse> {
+        if self.proving_service.is_local() {
+            self.db.set_task(
+                public_key.clone(),
+                coordinator_task,
+                coordinator_task.task_id.clone(),
+            );
+        }
+
         let proving_input = self.build_proving_input(coordinator_task).await?;
         let proving_task = self.proving_service.prove(proving_input).await;
 
@@ -178,10 +187,9 @@ impl Prover {
                         status = ?task.status,
                         "Task status update"
                     );
-                    self.db
-                        .set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
-                    self.db.set_proving_task_id_by_public_key(
+                    self.db.set_task(
                         public_key.clone(),
+                        coordinator_task,
                         proving_service_task_id.clone(),
                     );
                     sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
@@ -203,10 +211,7 @@ impl Prover {
                         None,
                     )
                     .await?;
-                    self.db
-                        .delete_coordinator_task_by_public_key(public_key.clone());
-                    self.db
-                        .delete_proving_task_id_by_public_key(public_key.clone());
+                    self.db.delete_task(public_key.clone());
                     break;
                 }
                 TaskStatus::Failed => {
@@ -228,10 +233,7 @@ impl Prover {
                         Some(task_err),
                     )
                     .await?;
-                    self.db
-                        .delete_coordinator_task_by_public_key(public_key.clone());
-                    self.db
-                        .delete_proving_task_id_by_public_key(public_key.clone());
+                    self.db.delete_task(public_key.clone());
                     break;
                 }
             }
