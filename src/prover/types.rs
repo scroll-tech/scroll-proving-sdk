@@ -54,6 +54,7 @@ impl<'de> Deserialize<'de> for CircuitType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[repr(u8)]
 pub enum ProverProviderType {
     #[default]
     Undefined,
@@ -71,11 +72,7 @@ impl ProverProviderType {
     }
 
     pub fn to_u8(self) -> u8 {
-        match self {
-            ProverProviderType::Undefined => 0,
-            ProverProviderType::Internal => 1,
-            ProverProviderType::External => 2,
-        }
+        self as u8
     }
 }
 
