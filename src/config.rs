@@ -65,8 +65,13 @@ pub struct CircuitConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
 
-const default_health_listener_addr: &str = "0.0.0.0:80";
-const default_n_workers: usize = 1;
+fn default_health_listener_addr() -> String {
+    "0.0.0.0:80".to_string()
+}
+
+fn default_n_workers() -> usize {
+    1
+}
 
 impl Config {
     pub fn from_reader<R>(reader: R) -> Result<Self>
