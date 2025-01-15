@@ -16,8 +16,8 @@ pub struct Response<T> {
 #[derive(Serialize, Deserialize)]
 pub struct LoginMessage {
     pub challenge: String,
-    pub prover_name: String,
     pub prover_version: String,
+    pub prover_name: String,
     pub prover_provider_type: ProverProviderType,
     pub prover_types: Vec<CircuitType>,
     pub vks: Vec<String>,
@@ -25,11 +25,12 @@ pub struct LoginMessage {
 
 impl Encodable for LoginMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let num_fields = 5;
+        let num_fields = 6;
         s.begin_list(num_fields);
         s.append(&self.challenge);
         s.append(&self.prover_version);
         s.append(&self.prover_name);
+        s.append(&self.prover_provider_type.to_u8());
         // The ProverType in go side is an type alias of uint8
         // A uint8 slice is treated as a string when doing the rlp encoding
         let prover_types = self
