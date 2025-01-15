@@ -85,8 +85,6 @@ impl KeySigner {
         let pre_hash = keccak256(buffer);
 
         let hash = H256::from(pre_hash);
-
-        println!("login_message hash: {}", hash);
         let sig = self.sign_hash(hash)?;
 
         Ok(buffer_to_hex(&sig.to_vec(), true))
