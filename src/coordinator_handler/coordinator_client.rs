@@ -136,11 +136,20 @@ impl CoordinatorClient {
             .sign_buffer(&buffer)
             .map_err(|e| anyhow::anyhow!("Failed to sign the login message: {e}"))?;
 
+
+        let hex_string: String = buffer.iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect();
+
+        println!("login_message Hex string: {}", hex_string);
+        println!("login_message signature: {}", signature);
+
         let login_request = LoginRequest {
             message: login_message,
             public_key: self.key_signer.get_public_key(),
             signature,
         };
+
         let login_response = self
             .api
             .login(&login_request, &login_response_data.token)
