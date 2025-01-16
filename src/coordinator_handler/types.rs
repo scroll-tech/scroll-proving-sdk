@@ -181,7 +181,7 @@ impl<'de> Deserialize<'de> for ProofStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{prover::types::ProverProviderType, coordinator_handler::KeySigner};
+    use crate::{coordinator_handler::KeySigner, prover::types::ProverProviderType};
 
     #[test]
     fn test_prover_provider_type_encoding() {
