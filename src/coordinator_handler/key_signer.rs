@@ -58,6 +58,16 @@ impl KeySigner {
         })
     }
 
+    pub fn new_from_secret_key(secret_key: &str) -> anyhow::Result<Self> {
+        let secret = hex::decode(secret_key).unwrap();
+        let secret_key = SecretKey::from_bytes(secret.as_slice().into())?;
+        let signing_key = SigningKey::from(secret_key.clone());
+        Ok(Self {
+            public_key: secret_key.public_key(),
+            signing_key,
+        })
+    }
+
     pub fn get_public_key(&self) -> String {
         let v: Vec<u8> = Vec::from(self.public_key.to_encoded_point(true).as_bytes());
         buffer_to_hex(&v, false)

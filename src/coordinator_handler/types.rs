@@ -177,3 +177,44 @@ impl<'de> Deserialize<'de> for ProofStatus {
         Ok(ProofStatus::from_u8(v))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{prover::types::ProverProviderType, coordinator_handler::KeySigner};
+
+    #[test]
+    fn test_prover_provider_type_encoding() {
+        // Test that ProverProviderType values match the coordinator's values
+        assert_eq!(ProverProviderType::Undefined as u8, 0);
+        assert_eq!(ProverProviderType::Internal as u8, 1);
+        assert_eq!(ProverProviderType::External as u8, 2);
+    }
+
+    // This test uses the same private key as the coordinator's TestGenerateSignature
+    // to verify signature generation compatibility
+    #[test]
+    fn test_signature_compatibility() {
+        let private_key_hex = "8b8df68fddf7ee2724b79ccbd07799909d59b4dd4f4df3f6ecdc4fb8d56bdf4c";
+        let key_signer = KeySigner::new_from_secret_key(&private_key_hex).unwrap();
+
+        let login_message = LoginMessage {
+            challenge: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik".to_string(),
+            prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c".to_string(),
+            prover_name: "test".to_string(),
+            prover_provider_type: ProverProviderType::Internal,
+            prover_types: vec![CircuitType::Chunk],
+            vks: vec!["mock_vk".to_string()],
+        };
+
+        let buffer = rlp::encode(&login_message);
+        let signature = key_signer
+            .sign_buffer(&buffer)
+            .map_err(|e| anyhow::anyhow!("Failed to sign the login message: {e}"))
+            .unwrap();
+
+        // expected signature from coordinator's TestGenerateSignature
+        let expected_signature = "0xb8659f094fde9ed697bd86b8d8a0a1cff902710d7750463858c8a9ff9e851b152240054f256ce9ea8a3eaf5f0d56ceed894b358d3505926dc6cfc36548f7001a01".to_string();
+        assert_eq!(signature, expected_signature);
+    }
+}
