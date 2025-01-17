@@ -46,4 +46,4 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 axum = "0.6.0"
 dotenv = "0.15"
-rocksdb = "0.20"
+rocksdb = "0.23.0"
