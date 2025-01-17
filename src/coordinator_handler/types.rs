@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn test_signature_compatibility() {
         let private_key_hex = "8b8df68fddf7ee2724b79ccbd07799909d59b4dd4f4df3f6ecdc4fb8d56bdf4c";
-        let key_signer = KeySigner::new_from_secret_key(&private_key_hex).unwrap();
+        let key_signer = KeySigner::new_from_secret_key(private_key_hex).unwrap();
 
         let login_message = LoginMessage {
             challenge: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik".to_string(),

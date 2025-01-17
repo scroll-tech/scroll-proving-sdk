@@ -86,14 +86,12 @@ impl Prover {
     }
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
-        let public_key = coordinator_client.key_signer.get_public_key();
-        if let (Some(coordinator_task), Some(mut proving_task_id)) =
-            self.db.get_task(public_key.clone())
+        if let (Some(coordinator_task), Some(mut proving_task_id)) = self
+            .db
+            .get_task(coordinator_client.key_signer.get_public_key())
         {
             if self.proving_service.is_local() {
-                let proving_task = self
-                    .request_proving(&coordinator_task, public_key.clone())
-                    .await?;
+                let proving_task = self.request_proving(&coordinator_task).await?;
                 proving_task_id = proving_task.task_id
             }
             return self
@@ -102,7 +100,7 @@ impl Prover {
         }
 
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
-        let proving_task = self.request_proving(&coordinator_task, public_key).await?;
+        let proving_task = self.request_proving(&coordinator_task).await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
     }
@@ -130,16 +128,7 @@ impl Prover {
     async fn request_proving(
         &self,
         coordinator_task: &GetTaskResponseData,
-        public_key: String,
     ) -> anyhow::Result<proving_service::ProveResponse> {
-        if self.proving_service.is_local() {
-            self.db.set_task(
-                public_key.clone(),
-                coordinator_task,
-                coordinator_task.task_id.clone(),
-            );
-        }
-
         let proving_input = self.build_proving_input(coordinator_task).await?;
         let proving_task = self.proving_service.prove(proving_input).await;
 
