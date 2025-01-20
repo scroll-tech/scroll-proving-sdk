@@ -13,6 +13,13 @@
     "prover": {
       "circuit_type": [1,2,3],
       "circuit_version": "v0.13.1",
+      "cloud": {
+        "base_url": "<CLOUD_PROVING_SERVICE_BASE_URL>",
+        "api_key": "<API_KEY>",
+        "retry_count": 3,
+        "retry_wait_time_sec": 5,
+        "connection_timeout_sec": 60
+      },
       "local": {
         "low_version_circuit": {
           "hard_fork_name": "bernoulli",
