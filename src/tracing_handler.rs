@@ -3,9 +3,7 @@ use ethers_core::types::BlockNumber;
 use ethers_core::types::H256;
 use ethers_providers::{Http, Provider};
 use prover_darwin_v2::BlockTrace;
-use serde::{de::DeserializeOwned, Serialize};
 use std::cmp::Ordering;
-use std::fmt::Debug;
 
 pub type CommonHash = H256;
 
@@ -19,10 +17,7 @@ impl L2gethClient {
         Ok(Self { provider })
     }
 
-    pub async fn get_block_trace_by_hash<T>(&self, hash: &CommonHash) -> anyhow::Result<T>
-    where
-        T: Serialize + DeserializeOwned + Debug + Send,
-    {
+    pub async fn get_block_trace_by_hash(&self, hash: &CommonHash) -> anyhow::Result<String> {
         log::info!(
             "l2geth_client calling get_block_trace_by_hash, hash: {:#?}",
             hash
@@ -45,7 +40,7 @@ impl L2gethClient {
     pub async fn get_sorted_traces_by_hashes(
         &self,
         block_hashes: &[CommonHash],
-    ) -> anyhow::Result<Vec<BlockTrace>> {
+    ) -> anyhow::Result<Vec<String>> {
         if block_hashes.is_empty() {
             log::error!("failed to get sorted traces: block_hashes are empty");
             anyhow::bail!("block_hashes are empty")
@@ -94,6 +89,7 @@ impl L2gethClient {
     }
 }
 
-fn get_block_number_from_trace(block_trace: &BlockTrace) -> Option<u64> {
+fn get_block_number_from_trace(block_trace: &String) -> Option<u64> {
+    let block_trace: BlockTrace = serde_json::from_str(block_trace).unwrap();
     block_trace.header.number.map(|n| n.as_u64())
 }
