@@ -27,6 +27,7 @@ pub struct ProveRequest {
     pub input: String,
 }
 
+#[derive(Default)]
 pub struct ProveResponse {
     pub task_id: String,
     pub circuit_type: CircuitType,
@@ -47,6 +48,7 @@ pub struct QueryTaskRequest {
     pub task_id: String,
 }
 
+#[derive(Default)]
 pub struct QueryTaskResponse {
     pub task_id: String,
     pub circuit_type: CircuitType,
@@ -63,8 +65,9 @@ pub struct QueryTaskResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub enum TaskStatus {
+    #[default]
     Queued,
     Proving,
     Success,
