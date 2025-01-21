@@ -295,13 +295,15 @@ impl Prover {
             }
             CircuitType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                let traces = self
+                let serialized_traces = self
                     .l2geth_client
                     .as_ref()
                     .unwrap()
                     .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
                     .await?;
-                let input = serde_json::to_string(&traces)?;
+                // Note: Manually join pre-serialized traces since they are already in JSON format.
+                // Using serde_json::to_string would escape the JSON strings, creating invalid nested JSON.
+                let input = format!("[{}]", serialized_traces.join(","));
 
                 Ok(ProveRequest {
                     circuit_type: task.task_type,
