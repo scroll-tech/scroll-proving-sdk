@@ -23,10 +23,12 @@ impl L2gethClient {
             hash
         );
 
-        let trace = self
+        let trace: serde_json::Value = self
             .provider
             .request("scroll_getBlockTraceByNumberOrHash", [format!("{hash:#x}")])
             .await?;
+
+        let trace = serde_json::to_string(&trace)?;
         Ok(trace)
     }
 
