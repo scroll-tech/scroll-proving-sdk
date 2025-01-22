@@ -141,6 +141,9 @@ impl Config {
                 cloud.base_url = val;
             }
         }
+        if let Some(val) = Self::get_env_var("N_WORKERS")? {
+            self.prover.n_workers = val.parse()?;
+        }
         if let Some(val) = Self::get_env_var("PROVING_SERVICE_API_KEY")? {
             if let Some(cloud) = &mut self.prover.cloud {
                 cloud.api_key = val;
