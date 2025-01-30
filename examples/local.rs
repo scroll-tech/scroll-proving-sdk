@@ -59,10 +59,10 @@ impl ProvingService for LocalProver {
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    async fn prove(&self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -81,10 +81,7 @@ async fn main() -> anyhow::Result<()> {
     let cfg = LocalProverConfig::from_file_and_env(args.config_file)?;
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg);
-    let prover = ProverBuilder::new(sdk_config)
-        .with_proving_service(Box::new(local_prover))
-        .build()
-        .await?;
+    let prover = ProverBuilder::new(sdk_config, local_prover).build().await?;
 
     prover.run().await;
 

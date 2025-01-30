@@ -1,16 +1,12 @@
 use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
-    LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
+    LoginRequest, ProverType, Response, SubmitProofRequest, SubmitProofResponseData,
 };
-use crate::{
-    config::CoordinatorConfig,
-    prover::{CircuitType, ProverProviderType},
-    utils::get_version,
-};
+use crate::{config::CoordinatorConfig, prover::ProverProviderType, utils::get_version};
 use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
-    circuit_types: Vec<CircuitType>,
+    prover_types: Vec<ProverType>,
     vks: Vec<String>,
     pub prover_name: String,
     pub prover_provider_type: ProverProviderType,
@@ -22,7 +18,7 @@ pub struct CoordinatorClient {
 impl CoordinatorClient {
     pub fn new(
         cfg: CoordinatorConfig,
-        circuit_types: Vec<CircuitType>,
+        prover_types: Vec<ProverType>,
         vks: Vec<String>,
         prover_name: String,
         prover_provider_type: ProverProviderType,
@@ -30,7 +26,7 @@ impl CoordinatorClient {
     ) -> anyhow::Result<Self> {
         let api = Api::new(cfg)?;
         let client = Self {
-            circuit_types,
+            prover_types,
             vks,
             prover_name,
             prover_provider_type,
@@ -111,22 +107,12 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
-        let mut prover_types = vec![];
-        if self.circuit_types.contains(&CircuitType::Bundle)
-            || self.circuit_types.contains(&CircuitType::Batch)
-        {
-            prover_types.push(CircuitType::Batch)
-        }
-        if self.circuit_types.contains(&CircuitType::Chunk) {
-            prover_types.push(CircuitType::Chunk)
-        }
-
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
             prover_version: get_version().to_string(),
             prover_name: self.prover_name.clone(),
             prover_provider_type: self.prover_provider_type,
-            prover_types,
+            prover_types: self.prover_types.clone(),
             vks: self.vks.clone(),
         };
 

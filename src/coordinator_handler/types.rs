@@ -1,6 +1,6 @@
 use super::error::ErrorCode;
 use crate::{
-    prover::{CircuitType, ProverProviderType},
+    prover::{ProofType, ProverProviderType},
     tracing_handler::CommonHash,
 };
 use rlp::{Encodable, RlpStream};
@@ -13,13 +13,60 @@ pub struct Response<T> {
     pub data: Option<T>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ProverType {
+    Undefined,
+    Chunk,
+    Batch,
+    OpenVM,
+}
+
+impl ProverType {
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            1 => ProverType::Chunk,
+            2 => ProverType::Batch,
+            3 => ProverType::OpenVM,
+            _ => ProverType::Undefined,
+        }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            ProverType::Undefined => 0,
+            ProverType::Chunk => 1,
+            ProverType::Batch => 2,
+            ProverType::OpenVM => 3,
+        }
+    }
+}
+
+impl Serialize for ProverType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u8(self.to_u8())
+    }
+}
+
+impl<'de> Deserialize<'de> for ProverType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: u8 = u8::deserialize(deserializer)?;
+        Ok(ProverType::from_u8(v))
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct LoginMessage {
     pub challenge: String,
     pub prover_version: String,
     pub prover_name: String,
     pub prover_provider_type: ProverProviderType,
-    pub prover_types: Vec<CircuitType>,
+    pub prover_types: Vec<ProverType>,
     pub vks: Vec<String>,
 }
 
@@ -36,7 +83,7 @@ impl Encodable for LoginMessage {
         let prover_types = self
             .prover_types
             .iter()
-            .map(|prover_type: &CircuitType| prover_type.to_u8())
+            .map(|prover_type| prover_type.to_u8())
             .collect::<Vec<u8>>();
         s.append(&prover_types);
         s.begin_list(self.vks.len());
@@ -63,7 +110,7 @@ pub type ChallengeResponseData = LoginResponseData;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GetTaskRequest {
-    pub task_types: Vec<CircuitType>,
+    pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
 }
 
@@ -71,7 +118,7 @@ pub struct GetTaskRequest {
 pub struct GetTaskResponseData {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: CircuitType,
+    pub task_type: ProofType,
     pub task_data: String,
     pub hard_fork_name: String,
 }
@@ -85,7 +132,7 @@ pub struct ChunkTaskDetail {
 pub struct SubmitProofRequest {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: CircuitType,
+    pub task_type: ProofType,
     pub status: ProofStatus,
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,
@@ -203,7 +250,7 @@ mod tests {
             prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c".to_string(),
             prover_name: "test".to_string(),
             prover_provider_type: ProverProviderType::Internal,
-            prover_types: vec![CircuitType::Chunk],
+            prover_types: vec![ProverType::Chunk],
             vks: vec!["mock_vk".to_string()],
         };
 

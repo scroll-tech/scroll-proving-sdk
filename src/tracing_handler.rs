@@ -2,13 +2,10 @@ use crate::config::L2GethConfig;
 use ethers_core::types::BlockNumber;
 use ethers_core::types::H256;
 use ethers_providers::{Http, Provider};
-use prover_darwin_v2::BlockTrace;
-use std::cmp::Ordering;
-
 pub type CommonHash = H256;
 
 pub struct L2gethClient {
-    provider: Provider<Http>,
+    pub provider: Provider<Http>,
 }
 
 impl L2gethClient {
@@ -39,7 +36,7 @@ impl L2gethClient {
         Ok(trace)
     }
 
-    pub async fn get_sorted_traces_by_hashes(
+    pub async fn get_traces_by_hashes(
         &self,
         block_hashes: &[CommonHash],
     ) -> anyhow::Result<Vec<String>> {
@@ -54,44 +51,6 @@ impl L2gethClient {
             block_traces.push(trace);
         }
 
-        block_traces.sort_by(|a, b| {
-            if get_block_number_from_trace(a).is_none() {
-                Ordering::Less
-            } else if get_block_number_from_trace(b).is_none() {
-                Ordering::Greater
-            } else {
-                get_block_number_from_trace(a)
-                    .unwrap()
-                    .cmp(&get_block_number_from_trace(b).unwrap())
-            }
-        });
-
-        let block_numbers: Vec<u64> = block_traces
-            .iter()
-            .map(|trace| get_block_number_from_trace(trace).unwrap_or(0))
-            .collect();
-        let mut i = 0;
-        while i < block_numbers.len() - 1 {
-            if block_numbers[i] + 1 != block_numbers[i + 1] {
-                log::error!(
-                    "block numbers are not continuous, got {} and {}",
-                    block_numbers[i],
-                    block_numbers[i + 1]
-                );
-                anyhow::bail!(
-                    "block numbers are not continuous, got {} and {}",
-                    block_numbers[i],
-                    block_numbers[i + 1]
-                )
-            }
-            i += 1;
-        }
-
         Ok(block_traces)
     }
-}
-
-fn get_block_number_from_trace(block_trace: &String) -> Option<u64> {
-    let block_trace: BlockTrace = serde_json::from_str(block_trace).unwrap();
-    block_trace.header.number.map(|n| n.as_u64())
 }

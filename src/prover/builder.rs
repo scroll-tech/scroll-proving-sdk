@@ -1,4 +1,6 @@
-use super::{CircuitType, ProverProviderType};
+use tokio::sync::RwLock;
+
+use super::{ProofType, ProverProviderType};
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
@@ -12,55 +14,47 @@ use crate::{
 };
 use std::path::PathBuf;
 
-pub struct ProverBuilder {
+pub struct ProverBuilder<Backend: ProvingService + Send + Sync + 'static> {
     cfg: Config,
-    proving_service: Option<Box<dyn ProvingService + Send + Sync>>,
+    proving_service: Backend,
 }
 
-impl ProverBuilder {
-    pub fn new(cfg: Config) -> Self {
+impl<Backend> ProverBuilder<Backend>
+where
+    Backend: ProvingService + Send + Sync + 'static,
+{
+    pub fn new(cfg: Config, service: Backend) -> Self {
         ProverBuilder {
             cfg,
-            proving_service: None,
+            proving_service: service,
         }
     }
 
-    pub fn with_proving_service(
-        mut self,
-        proving_service: Box<dyn ProvingService + Send + Sync>,
-    ) -> Self {
-        self.proving_service = Some(proving_service);
-        self
-    }
-
-    pub async fn build(self) -> anyhow::Result<Prover> {
-        if self.proving_service.is_none() {
-            anyhow::bail!("proving_service is not provided");
-        }
-        if self.proving_service.as_ref().unwrap().is_local() && self.cfg.prover.n_workers > 1 {
+    pub async fn build(self) -> anyhow::Result<Prover<Backend>> {
+        if self.proving_service.is_local() && self.cfg.prover.n_workers > 1 {
             anyhow::bail!("cannot use multiple workers with local proving service");
         }
 
-        if self.cfg.prover.circuit_types.contains(&CircuitType::Chunk) && self.cfg.l2geth.is_none()
+        if self
+            .cfg
+            .prover
+            .supported_proof_types
+            .contains(&ProofType::Chunk)
+            && self.cfg.l2geth.is_none()
         {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
         let get_vk_request = GetVkRequest {
-            circuit_types: self.cfg.prover.circuit_types.clone(),
+            proof_types: self.cfg.prover.supported_proof_types.clone(),
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };
-        let get_vk_response = self
-            .proving_service
-            .as_ref()
-            .unwrap()
-            .get_vks(get_vk_request)
-            .await;
+        let get_vk_response = self.proving_service.get_vks(get_vk_request).await;
         if let Some(error) = get_vk_response.error {
             anyhow::bail!("failed to get vk: {}", error);
         }
 
-        let prover_provider_type = if self.proving_service.as_ref().unwrap().is_local() {
+        let prover_provider_type = if self.proving_service.is_local() {
             ProverProviderType::Internal
         } else {
             ProverProviderType::External
@@ -77,7 +71,7 @@ impl ProverBuilder {
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
-                let prover_name = if self.proving_service.as_ref().unwrap().is_local() {
+                let prover_name = if self.proving_service.is_local() {
                     self.cfg.prover_name_prefix.clone()
                 } else {
                     format_cloud_prover_name(self.cfg.prover_name_prefix.clone(), i)
@@ -85,7 +79,7 @@ impl ProverBuilder {
 
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
-                    self.cfg.prover.circuit_types.clone(),
+                    self.cfg.coordinator_prover_type(),
                     get_vk_response.vks.clone(),
                     prover_name,
                     prover_provider_type,
@@ -105,11 +99,12 @@ impl ProverBuilder {
         });
 
         Ok(Prover {
-            circuit_types: self.cfg.prover.circuit_types.clone(),
+            circuit_type: self.cfg.prover.circuit_type,
+            proof_types: self.cfg.prover.supported_proof_types,
             circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
             l2geth_client,
-            proving_service: self.proving_service.unwrap(),
+            proving_service: RwLock::new(self.proving_service),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
             db: Db::new(&db_path)?,

@@ -9,33 +9,40 @@ use crate::{
     db::Db,
     tracing_handler::L2gethClient,
 };
+use anyhow::bail;
 use axum::{routing::get, Router};
+use ethers_core::types::H256;
+use ethers_providers::Middleware;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
-use tokio::task::JoinSet;
 use tokio::time::{sleep, Duration};
+use tokio::{sync::RwLock, task::JoinSet};
 use tracing::{error, info, instrument};
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 
 const WORKER_SLEEP_SEC: u64 = 20;
 
-pub struct Prover {
-    circuit_types: Vec<CircuitType>,
+pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
+    circuit_type: CircuitType,
+    proof_types: Vec<ProofType>,
     circuit_version: String,
     coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
-    proving_service: Box<dyn ProvingService + Send + Sync>,
+    proving_service: RwLock<Backend>,
     n_workers: usize,
     health_listener_addr: String,
     db: Db,
 }
 
-impl Prover {
+impl<Backend> Prover<Backend>
+where
+    Backend: ProvingService + Send + Sync + 'static,
+{
     pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
-        if self.circuit_types.contains(&CircuitType::Chunk) {
+        if self.proof_types.contains(&ProofType::Chunk) {
             assert!(self.l2geth_client.is_some());
         }
 
@@ -90,7 +97,7 @@ impl Prover {
             .db
             .get_task(coordinator_client.key_signer.get_public_key())
         {
-            if self.proving_service.is_local() {
+            if self.proving_service.read().await.is_local() {
                 let proving_task = self.request_proving(&coordinator_task).await?;
                 proving_task_id = proving_task.task_id
             }
@@ -130,7 +137,12 @@ impl Prover {
         coordinator_task: &GetTaskResponseData,
     ) -> anyhow::Result<proving_service::ProveResponse> {
         let proving_input = self.build_proving_input(coordinator_task).await?;
-        let proving_task = self.proving_service.prove(proving_input).await;
+        let proving_task = self
+            .proving_service
+            .write()
+            .await
+            .prove(proving_input)
+            .await;
 
         if let Some(error) = proving_task.error {
             anyhow::bail!(
@@ -160,6 +172,8 @@ impl Prover {
         loop {
             let task = self
                 .proving_service
+                .write()
+                .await
                 .query_task(QueryTaskRequest {
                     task_id: proving_service_task_id.clone(),
                 })
@@ -271,7 +285,7 @@ impl Prover {
         };
 
         GetTaskRequest {
-            task_types: self.circuit_types.clone(),
+            task_types: self.proof_types.clone(),
             prover_height,
         }
     }
@@ -281,43 +295,112 @@ impl Prover {
         task: &GetTaskResponseData,
     ) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
-            self.circuit_types.contains(&task.task_type),
+            self.proof_types.contains(&task.task_type),
             "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
-            self.circuit_types,
+            self.proof_types,
             task.task_type,
             task.uuid,
             task.task_id
         );
 
+        match self.circuit_type {
+            CircuitType::Halo2 => self.build_halo2_input(task).await,
+            CircuitType::OpenVM => {
+                #[cfg(not(feature = "openvm"))]
+                anyhow::bail!("OpenVM is not enabled in this build");
+                #[cfg(feature = "openvm")]
+                self.build_openvm_input(task).await
+            }
+            _ => anyhow::bail!("unsupported circuit type: {:?}", self.circuit_type),
+        }
+    }
+
+    async fn build_halo2_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
         match task.task_type {
-            CircuitType::Undefined => {
+            ProofType::Undefined => {
                 unreachable!();
             }
-            CircuitType::Chunk => {
+            ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
                 let serialized_traces = self
                     .l2geth_client
                     .as_ref()
                     .unwrap()
-                    .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
+                    .get_traces_by_hashes(&chunk_task_detail.block_hashes)
                     .await?;
                 // Note: Manually join pre-serialized traces since they are already in JSON format.
                 // Using serde_json::to_string would escape the JSON strings, creating invalid nested JSON.
                 let input = format!("[{}]", serialized_traces.join(","));
 
                 Ok(ProveRequest {
-                    circuit_type: task.task_type,
+                    proof_type: task.task_type,
                     circuit_version: self.circuit_version.clone(),
                     hard_fork_name: task.hard_fork_name.clone(),
                     input,
                 })
             }
-            CircuitType::Batch | CircuitType::Bundle => Ok(ProveRequest {
-                circuit_type: task.task_type,
+            ProofType::Batch | ProofType::Bundle => Ok(ProveRequest {
+                proof_type: task.task_type,
                 circuit_version: self.circuit_version.clone(),
                 hard_fork_name: task.hard_fork_name.clone(),
                 input: task.task_data.clone(),
             }),
         }
+    }
+
+    #[cfg(feature = "openvm")]
+    async fn build_openvm_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
+        match task.task_type {
+            ProofType::Chunk => {
+                let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
+                let mut witnesses = vec![];
+                for block_hash in chunk_task_detail.block_hashes {
+                    witnesses.push(self.build_block_witness(block_hash).await?);
+                }
+                witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
+
+                Ok(ProveRequest {
+                    proof_type: task.task_type,
+                    circuit_version: self.circuit_version.clone(),
+                    hard_fork_name: task.hard_fork_name.clone(),
+                    input: serde_json::to_string(&witnesses)?,
+                })
+            }
+            ProofType::Batch | ProofType::Bundle => Ok(ProveRequest {
+                proof_type: task.task_type,
+                circuit_version: self.circuit_version.clone(),
+                hard_fork_name: task.hard_fork_name.clone(),
+                input: task.task_data.clone(),
+            }),
+            _ => bail!("unsupported task type: {:?}", task.task_type),
+        }
+    }
+
+    #[cfg(feature = "openvm")]
+    async fn build_block_witness(
+        &self,
+        hash: H256,
+    ) -> anyhow::Result<sbv_primitives::types::BlockWitness> {
+        let client = self.l2geth_client.as_ref().unwrap();
+        let block = client
+            .provider
+            .get_block(hash)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Block not found"))?;
+        let block_num = block.number.expect("block hash without number").as_u64();
+        let cmd = sbv_utils::commands::witness::dump::DumpWitnessCommand {
+            rpc: client.provider.provider().url().clone(),
+            block: block_num,
+            ancestors: 1,
+            out_dir: std::env::temp_dir(), // we won't write to disk
+            json: false,
+            rkyv: false,
+            max_concurrency: 10,
+            max_retry: 10,
+            backoff: 100,
+            cups: 100,
+        };
+
+        cmd.run().await
     }
 }

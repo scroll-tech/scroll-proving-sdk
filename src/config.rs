@@ -1,4 +1,7 @@
-use crate::prover::CircuitType;
+use crate::{
+    coordinator_handler::ProverType,
+    prover::{CircuitType, ProofType},
+};
 use anyhow::{anyhow, Result};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -32,7 +35,8 @@ pub struct L2GethConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProverConfig {
-    pub circuit_types: Vec<CircuitType>,
+    pub circuit_type: CircuitType,
+    pub supported_proof_types: Vec<ProofType>,
     pub circuit_version: String,
     #[serde(default = "default_n_workers")]
     pub n_workers: usize,
@@ -94,22 +98,23 @@ impl Config {
                 l2geth.endpoint = val;
             }
         }
-        if let Some(val) = Self::get_env_var("CIRCUIT_TYPES")? {
+
+        if let Some(val) = Self::get_env_var("PROOF_TYPES")? {
             let values_vec: Vec<&str> = val
                 .trim_matches(|c| c == '[' || c == ']')
                 .split(',')
                 .map(|s| s.trim())
                 .collect();
 
-            self.prover.circuit_types = values_vec
+            self.prover.supported_proof_types = values_vec
                 .iter()
                 .map(|value| match value.parse::<u8>() {
-                    Ok(num) => CircuitType::from_u8(num),
+                    Ok(num) => ProofType::from_u8(num),
                     Err(e) => {
                         panic!("Failed to parse circuit type: {}", e);
                     }
                 })
-                .collect::<Vec<CircuitType>>();
+                .collect::<Vec<ProofType>>();
         }
 
         if let Some(val) = Self::get_env_var("N_WORKERS")? {
@@ -121,5 +126,31 @@ impl Config {
         }
 
         Ok(())
+    }
+
+    pub fn coordinator_prover_type(&self) -> Vec<ProverType> {
+        if self.prover.circuit_type == CircuitType::OpenVM {
+            vec![ProverType::OpenVM]
+        } else {
+            let mut prover_types = vec![];
+            if self
+                .prover
+                .supported_proof_types
+                .iter()
+                .any(|t| *t == ProofType::Bundle || *t == ProofType::Batch)
+            {
+                prover_types.push(ProverType::Batch)
+            }
+
+            if self
+                .prover
+                .supported_proof_types
+                .contains(&ProofType::Chunk)
+            {
+                prover_types.push(ProverType::Chunk)
+            }
+
+            prover_types
+        }
     }
 }

@@ -1,16 +1,16 @@
-use super::CircuitType;
+use super::ProofType;
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait ProvingService {
     fn is_local(&self) -> bool;
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse;
-    async fn prove(&self, req: ProveRequest) -> ProveResponse;
-    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse;
+    async fn prove(&mut self, req: ProveRequest) -> ProveResponse;
+    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
 pub struct GetVkRequest {
-    pub circuit_types: Vec<CircuitType>,
+    pub proof_types: Vec<ProofType>,
     pub circuit_version: String,
 }
 
@@ -21,7 +21,7 @@ pub struct GetVkResponse {
 
 #[derive(Clone)]
 pub struct ProveRequest {
-    pub circuit_type: CircuitType,
+    pub proof_type: ProofType,
     pub circuit_version: String,
     pub hard_fork_name: String,
     pub input: String,
@@ -30,7 +30,7 @@ pub struct ProveRequest {
 #[derive(Default)]
 pub struct ProveResponse {
     pub task_id: String,
-    pub circuit_type: CircuitType,
+    pub proof_type: ProofType,
     pub circuit_version: String,
     pub hard_fork_name: String,
     pub status: TaskStatus,
@@ -51,7 +51,7 @@ pub struct QueryTaskRequest {
 #[derive(Default)]
 pub struct QueryTaskResponse {
     pub task_id: String,
-    pub circuit_type: CircuitType,
+    pub proof_type: ProofType,
     pub circuit_version: String,
     pub hard_fork_name: String,
     pub status: TaskStatus,
