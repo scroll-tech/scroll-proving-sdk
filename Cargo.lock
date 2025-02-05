@@ -5441,7 +5441,7 @@ dependencies = [
 [[package]]
 name = "sbv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "sbv-core",
  "sbv-helpers",
@@ -5453,7 +5453,7 @@ dependencies = [
 [[package]]
 name = "sbv-core"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "reth-evm",
  "reth-evm-ethereum",
@@ -5475,7 +5475,7 @@ dependencies = [
 [[package]]
 name = "sbv-helpers"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "revm",
 ]
@@ -5483,7 +5483,7 @@ dependencies = [
 [[package]]
 name = "sbv-kv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "auto_impl",
  "hashbrown 0.15.2",
@@ -5493,7 +5493,7 @@ dependencies = [
 [[package]]
 name = "sbv-primitives"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -5521,7 +5521,7 @@ dependencies = [
 [[package]]
 name = "sbv-trie"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "alloy-rlp",
  "alloy-trie",
@@ -5537,7 +5537,7 @@ dependencies = [
 [[package]]
 name = "sbv-utils"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=omerfirmak-patch-1#1c22ad14522c1de299f56fd71c513a878006d698"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=master#316e6c77ed3477f5b800e5f794eace412de717e2"
 dependencies = [
  "alloy",
  "anyhow",
