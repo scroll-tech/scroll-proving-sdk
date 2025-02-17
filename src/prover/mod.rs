@@ -266,7 +266,10 @@ impl Prover {
             None => None,
             Some(l2geth_client) => match l2geth_client.block_number().await {
                 Ok(block_number) => block_number.as_number().map(|num| num.as_u64()),
-                Err(_) => None,
+                Err(_) => {
+                    info!(prover_name = ?coordinator_client.prover_name, "Failed to get block number");
+                    None
+                }
             },
         };
 
