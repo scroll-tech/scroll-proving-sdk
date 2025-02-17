@@ -57,6 +57,7 @@ impl CloudProverConfig {
 
     pub fn from_file_and_env(file_name: String) -> Result<Self> {
         let mut cfg = Self::from_file(file_name)?;
+        cfg.sdk_config.override_with_env()?;
 
         if let Some(val) = Self::get_env_var("PROVING_SERVICE_BASE_URL")? {
             cfg.base_url = val;

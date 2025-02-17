@@ -77,7 +77,7 @@ impl Config {
             .transpose()
     }
 
-    fn override_with_env(&mut self) -> Result<()> {
+    pub fn override_with_env(&mut self) -> Result<()> {
         dotenv().ok();
 
         if let Some(val) = Self::get_env_var("PROVER_NAME_PREFIX")? {

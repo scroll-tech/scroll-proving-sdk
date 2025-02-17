@@ -44,7 +44,8 @@ impl LocalProverConfig {
     }
 
     pub fn from_file_and_env(file_name: String) -> Result<Self> {
-        let cfg = Self::from_file(file_name)?;
+        let mut cfg = Self::from_file(file_name)?;
+        cfg.sdk_config.override_with_env()?;
         Ok(cfg)
     }
 }
