@@ -22,7 +22,7 @@ pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
 const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover {
-    circuit_type: CircuitType,
+    circuit_types: Vec<CircuitType>,
     circuit_version: String,
     coordinator_clients: Vec<CoordinatorClient>,
     l2geth_client: Option<L2gethClient>,
@@ -35,7 +35,7 @@ pub struct Prover {
 impl Prover {
     pub async fn run(self) {
         assert!(self.n_workers == self.coordinator_clients.len());
-        if self.circuit_type == CircuitType::Chunk {
+        if self.circuit_types.contains(&CircuitType::Chunk) {
             assert!(self.l2geth_client.is_some());
         }
 
@@ -86,12 +86,14 @@ impl Prover {
     }
 
     async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
-        let public_key = coordinator_client.key_signer.get_public_key();
-        if let (Some(coordinator_task), Some(proving_task_id)) = (
-            self.db
-                .get_coordinator_task_by_public_key(public_key.clone()),
-            self.db.get_proving_task_id_by_public_key(public_key),
-        ) {
+        if let (Some(coordinator_task), Some(mut proving_task_id)) = self
+            .db
+            .get_task(coordinator_client.key_signer.get_public_key())
+        {
+            if self.proving_service.is_local() {
+                let proving_task = self.request_proving(&coordinator_task).await?;
+                proving_task_id = proving_task.task_id
+            }
             return self
                 .handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
                 .await;
@@ -174,10 +176,9 @@ impl Prover {
                         status = ?task.status,
                         "Task status update"
                     );
-                    self.db
-                        .set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
-                    self.db.set_proving_task_id_by_public_key(
+                    self.db.set_task(
                         public_key.clone(),
+                        coordinator_task,
                         proving_service_task_id.clone(),
                     );
                     sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
@@ -199,10 +200,7 @@ impl Prover {
                         None,
                     )
                     .await?;
-                    self.db
-                        .delete_coordinator_task_by_public_key(public_key.clone());
-                    self.db
-                        .delete_proving_task_id_by_public_key(public_key.clone());
+                    self.db.delete_task(public_key.clone());
                     break;
                 }
                 TaskStatus::Failed => {
@@ -224,10 +222,7 @@ impl Prover {
                         Some(task_err),
                     )
                     .await?;
-                    self.db
-                        .delete_coordinator_task_by_public_key(public_key.clone());
-                    self.db
-                        .delete_proving_task_id_by_public_key(public_key.clone());
+                    self.db.delete_task(public_key.clone());
                     break;
                 }
             }
@@ -271,12 +266,15 @@ impl Prover {
             None => None,
             Some(l2geth_client) => match l2geth_client.block_number().await {
                 Ok(block_number) => block_number.as_number().map(|num| num.as_u64()),
-                Err(_) => None,
+                Err(_) => {
+                    log::info!("Failed to get block number");
+                    None
+                }
             },
         };
 
         GetTaskRequest {
-            task_types: vec![self.circuit_type],
+            task_types: self.circuit_types.clone(),
             prover_height,
         }
     }
@@ -286,9 +284,9 @@ impl Prover {
         task: &GetTaskResponseData,
     ) -> anyhow::Result<ProveRequest> {
         anyhow::ensure!(
-            task.task_type == self.circuit_type,
-            "task type mismatch. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
-            self.circuit_type,
+            self.circuit_types.contains(&task.task_type),
+            "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
+            self.circuit_types,
             task.task_type,
             task.uuid,
             task.task_id
@@ -300,13 +298,15 @@ impl Prover {
             }
             CircuitType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                let traces = self
+                let serialized_traces = self
                     .l2geth_client
                     .as_ref()
                     .unwrap()
                     .get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
                     .await?;
-                let input = serde_json::to_string(&traces)?;
+                // Note: Manually join pre-serialized traces since they are already in JSON format.
+                // Using serde_json::to_string would escape the JSON strings, creating invalid nested JSON.
+                let input = format!("[{}]", serialized_traces.join(","));
 
                 Ok(ProveRequest {
                     circuit_type: task.task_type,

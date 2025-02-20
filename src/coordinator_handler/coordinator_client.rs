@@ -2,14 +2,18 @@ use super::{
     api::Api, error::ErrorCode, GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage,
     LoginRequest, Response, SubmitProofRequest, SubmitProofResponseData,
 };
-use crate::{config::CoordinatorConfig, prover::CircuitType, utils::get_version};
+use crate::{
+    config::CoordinatorConfig,
+    prover::{CircuitType, ProverProviderType},
+    utils::get_version,
+};
 use tokio::sync::{Mutex, MutexGuard};
 
 pub struct CoordinatorClient {
-    circuit_type: CircuitType,
+    circuit_types: Vec<CircuitType>,
     vks: Vec<String>,
-    circuit_version: String,
     pub prover_name: String,
+    pub prover_provider_type: ProverProviderType,
     pub key_signer: KeySigner,
     api: Api,
     token: Mutex<Option<String>>,
@@ -18,18 +22,18 @@ pub struct CoordinatorClient {
 impl CoordinatorClient {
     pub fn new(
         cfg: CoordinatorConfig,
-        circuit_type: CircuitType,
+        circuit_types: Vec<CircuitType>,
         vks: Vec<String>,
-        circuit_version: String,
         prover_name: String,
+        prover_provider_type: ProverProviderType,
         key_signer: KeySigner,
     ) -> anyhow::Result<Self> {
         let api = Api::new(cfg)?;
         let client = Self {
-            circuit_type,
+            circuit_types,
             vks,
-            circuit_version,
             prover_name,
+            prover_provider_type,
             key_signer,
             api,
             token: Mutex::new(None),
@@ -107,15 +111,21 @@ impl CoordinatorClient {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
 
-        let prover_types = match self.circuit_type {
-            CircuitType::Batch | CircuitType::Bundle => vec![CircuitType::Batch], // to conform to coordinator logic
-            _ => vec![self.circuit_type],
-        };
+        let mut prover_types = vec![];
+        if self.circuit_types.contains(&CircuitType::Bundle)
+            || self.circuit_types.contains(&CircuitType::Batch)
+        {
+            prover_types.push(CircuitType::Batch)
+        }
+        if self.circuit_types.contains(&CircuitType::Chunk) {
+            prover_types.push(CircuitType::Chunk)
+        }
 
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
+            prover_version: get_version().to_string(),
             prover_name: self.prover_name.clone(),
-            prover_version: get_version(&self.circuit_version).to_string(),
+            prover_provider_type: self.prover_provider_type,
             prover_types,
             vks: self.vks.clone(),
         };

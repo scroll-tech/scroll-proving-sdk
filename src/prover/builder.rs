@@ -1,4 +1,4 @@
-use super::CircuitType;
+use super::{CircuitType, ProverProviderType};
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
@@ -8,6 +8,7 @@ use crate::{
         Prover,
     },
     tracing_handler::L2gethClient,
+    utils::format_cloud_prover_name,
 };
 use std::path::PathBuf;
 
@@ -40,23 +41,30 @@ impl ProverBuilder {
             anyhow::bail!("cannot use multiple workers with local proving service");
         }
 
-        if self.cfg.prover.circuit_type == CircuitType::Chunk && self.cfg.l2geth.is_none() {
+        if self.cfg.prover.circuit_types.contains(&CircuitType::Chunk) && self.cfg.l2geth.is_none()
+        {
             anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
         let get_vk_request = GetVkRequest {
-            circuit_type: self.cfg.prover.circuit_type,
+            circuit_types: self.cfg.prover.circuit_types.clone(),
             circuit_version: self.cfg.prover.circuit_version.clone(),
         };
         let get_vk_response = self
             .proving_service
             .as_ref()
             .unwrap()
-            .get_vk(get_vk_request)
+            .get_vks(get_vk_request)
             .await;
         if let Some(error) = get_vk_response.error {
             anyhow::bail!("failed to get vk: {}", error);
         }
+
+        let prover_provider_type = if self.proving_service.as_ref().unwrap().is_local() {
+            ProverProviderType::Internal
+        } else {
+            ProverProviderType::External
+        };
 
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
@@ -69,12 +77,18 @@ impl ProverBuilder {
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
+                let prover_name = if self.proving_service.as_ref().unwrap().is_local() {
+                    self.cfg.prover_name_prefix.clone()
+                } else {
+                    format_cloud_prover_name(self.cfg.prover_name_prefix.clone(), i)
+                };
+
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
-                    self.cfg.prover.circuit_type,
-                    vec![get_vk_response.vk.clone()],
-                    self.cfg.prover.circuit_version.clone(),
-                    format!("{}{}", self.cfg.prover_name_prefix, i),
+                    self.cfg.prover.circuit_types.clone(),
+                    get_vk_response.vks.clone(),
+                    prover_name,
+                    prover_provider_type,
                     key_signers[i].clone(),
                 )
             })
@@ -91,7 +105,7 @@ impl ProverBuilder {
         });
 
         Ok(Prover {
-            circuit_type: self.cfg.prover.circuit_type,
+            circuit_types: self.cfg.prover.circuit_types.clone(),
             circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
             l2geth_client,
