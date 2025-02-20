@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+alloy = { version = "0.11", features = [
+    "provider-http",
+    "transport-http",
+    "reqwest",
+    "reqwest-rustls-tls",
+    "json-rpc",
+] }
 anyhow = "1.0"
 log = "0.4"
 serde = { version = "1.0.198", features = ["derive"] }

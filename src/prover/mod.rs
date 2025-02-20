@@ -381,6 +381,8 @@ where
         &self,
         hash: H256,
     ) -> anyhow::Result<sbv_primitives::types::BlockWitness> {
+        use sbv_utils::rpc::ProviderExt;
+
         let client = self.l2geth_client.as_ref().unwrap();
         let block = client
             .provider
@@ -388,19 +390,12 @@ where
             .await?
             .ok_or_else(|| anyhow::anyhow!("Block not found"))?;
         let block_num = block.number.expect("block hash without number").as_u64();
-        let cmd = sbv_utils::commands::witness::dump::DumpWitnessCommand {
-            rpc: client.provider.provider().url().clone(),
-            block: block_num,
-            ancestors: 1,
-            out_dir: std::env::temp_dir(), // we won't write to disk
-            json: false,
-            rkyv: false,
-            max_concurrency: 10,
-            max_retry: 10,
-            backoff: 100,
-            cups: 100,
-        };
 
-        cmd.run().await
+        let provider =
+            alloy::providers::ProviderBuilder::<_, _, sbv_primitives::Network>::default()
+                .on_http(client.provider.provider().url().clone());
+
+        let witness = provider.dump_block_witness(block_num.into()).await?;
+        witness.ok_or_else(|| anyhow::anyhow!("Failed to dump block witness"))
     }
 }
