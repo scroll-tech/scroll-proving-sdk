@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::Parser;
-
 use scroll_proving_sdk::{
-    config::{Config, LocalProverConfig},
+    config::Config as SdkConfig,
     prover::{
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
@@ -12,6 +12,8 @@ use scroll_proving_sdk::{
     },
     utils::init_tracing,
 };
+use serde::{Deserialize, Serialize};
+use std::fs::File;
 
 #[derive(Parser, Debug)]
 #[clap(disable_version_flag = true)]
@@ -21,6 +23,33 @@ struct Args {
     config_file: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocalProverConfig {
+    pub sdk_config: SdkConfig,
+    pub conf1: String,
+    pub conf2: String,
+}
+
+impl LocalProverConfig {
+    pub fn from_reader<R>(reader: R) -> Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+    }
+
+    pub fn from_file(file_name: String) -> Result<Self> {
+        let file = File::open(file_name)?;
+        Self::from_reader(&file)
+    }
+
+    pub fn from_file_and_env(file_name: String) -> Result<Self> {
+        let mut cfg = Self::from_file(file_name)?;
+        cfg.sdk_config.override_with_env()?;
+        Ok(cfg)
+    }
+}
+
 struct LocalProver {}
 
 #[async_trait]
@@ -28,7 +57,7 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    async fn get_vk(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
     async fn prove(&self, req: ProveRequest) -> ProveResponse {
@@ -50,9 +79,10 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let args = Args::parse();
-    let cfg: Config = Config::from_file(args.config_file)?;
-    let local_prover = LocalProver::new(cfg.prover.local.clone().unwrap());
-    let prover = ProverBuilder::new(cfg)
+    let cfg = LocalProverConfig::from_file_and_env(args.config_file)?;
+    let sdk_config = cfg.sdk_config.clone();
+    let local_prover = LocalProver::new(cfg);
+    let prover = ProverBuilder::new(sdk_config)
         .with_proving_service(Box::new(local_prover))
         .build()
         .await?;
