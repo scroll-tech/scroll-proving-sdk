@@ -359,11 +359,16 @@ where
                 }
                 witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
 
+                let input_map = serde_json::json!({
+                    "witnesses": witnesses,
+                    "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash
+                });
+
                 Ok(ProveRequest {
                     proof_type: task.task_type,
                     circuit_version: self.circuit_version.clone(),
                     hard_fork_name: task.hard_fork_name.clone(),
-                    input: serde_json::to_string(&witnesses)?,
+                    input: serde_json::to_string(&input_map)?,
                 })
             }
             ProofType::Batch | ProofType::Bundle => Ok(ProveRequest {
