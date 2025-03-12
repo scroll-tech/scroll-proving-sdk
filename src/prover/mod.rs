@@ -360,7 +360,7 @@ where
                 witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
 
                 let input_map = serde_json::json!({
-                    "witnesses": witnesses,
+                    "block_witnesses": witnesses,
                     "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash
                 });
 
