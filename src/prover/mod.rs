@@ -353,14 +353,14 @@ where
         match task.task_type {
             ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                let mut witnesses = vec![];
+                let mut block_witnesses = vec![];
                 for block_hash in chunk_task_detail.block_hashes {
-                    witnesses.push(self.build_block_witness(block_hash).await?);
+                    block_witnesses.push(self.build_block_witness(block_hash).await?);
                 }
-                witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
+                block_witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
 
                 let input_map = serde_json::json!({
-                    "block_witnesses": witnesses,
+                    "block_witnesses": block_witnesses,
                     "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash
                 });
 
