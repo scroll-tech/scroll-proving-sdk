@@ -263,15 +263,24 @@ where
             failure_msg,
         };
 
-        coordinator_client.submit_proof(&submit_proof_req).await?;
-        info!(
-            prover_name = ?coordinator_client.prover_name,
-            ?coordinator_task.task_type,
-            ?coordinator_task.uuid,
-            ?coordinator_task.task_id,
-            ?task.task_id,
-            "Proof submitted"
-        );
+        let submit_proof_result = coordinator_client.submit_proof(&submit_proof_req).await?;
+
+        if submit_proof_result.errcode != ErrorCode::Success {
+            anyhow::bail!(
+                "Proof submit failed, errcode: {:?}, errmsg: {:?}",
+                submit_proof_result.errcode,
+                submit_proof_result.errmsg
+            );
+        } else {
+            info!(
+                prover_name = ?coordinator_client.prover_name,
+                ?coordinator_task.task_type,
+                ?coordinator_task.uuid,
+                ?coordinator_task.task_id,
+                ?task.task_id,
+                "Proof submitted successfully"
+            );
+        }
         Ok(())
     }
 
@@ -353,6 +362,7 @@ where
         match task.task_type {
             ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
+                chunk_task_detail.prev_msg_queue_hash;
                 let mut witnesses = vec![];
                 for block_hash in chunk_task_detail.block_hashes {
                     witnesses.push(self.build_block_witness(block_hash).await?);
