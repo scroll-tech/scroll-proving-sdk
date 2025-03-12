@@ -362,7 +362,6 @@ where
         match task.task_type {
             ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                chunk_task_detail.prev_msg_queue_hash;
                 let mut witnesses = vec![];
                 for block_hash in chunk_task_detail.block_hashes {
                     witnesses.push(self.build_block_witness(block_hash).await?);
