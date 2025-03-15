@@ -10,6 +10,8 @@ use crate::{
     tracing_handler::L2gethClient,
 };
 use axum::{routing::get, Router};
+use ethers_core::types::H256;
+use ethers_providers::Middleware;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -406,7 +408,7 @@ where
                 hard_fork_name: task.hard_fork_name.clone(),
                 input: task.task_data.clone(),
             }),
-            _ => bail!("unsupported task type: {:?}", task.task_type),
+            _ => anyhow::bail!("unsupported task type: {:?}", task.task_type),
         }
     }
 
