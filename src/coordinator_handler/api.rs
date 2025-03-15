@@ -63,10 +63,6 @@ impl Api {
             .await?;
 
         if response.status() != http::status::StatusCode::OK {
-            // log::error!(
-            //     "[coordinator client], {method}, status not ok: {}",
-            //     response.status()
-            // );
             anyhow::bail!(
                 "[coordinator client], {method}, status not ok: {}",
                 response.status()
