@@ -406,7 +406,7 @@ where
                 hard_fork_name: task.hard_fork_name.clone(),
                 input: task.task_data.clone(),
             }),
-            _ => bail!("unsupported task type: {:?}", task.task_type),
+            _ => anyhow::bail!("unsupported task type: {:?}", task.task_type),
         }
     }
 
