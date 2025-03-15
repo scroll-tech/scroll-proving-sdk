@@ -10,6 +10,8 @@ use crate::{
     tracing_handler::L2gethClient,
 };
 use axum::{routing::get, Router};
+use ethers_core::types::H256;
+use ethers_providers::Middleware;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -297,7 +299,6 @@ where
             },
         };
 
-        
         Ok(GetTaskRequest {
             task_types: self.proof_types.clone(),
             prover_height,
