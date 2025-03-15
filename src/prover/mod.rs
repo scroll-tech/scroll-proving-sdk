@@ -299,7 +299,6 @@ where
             },
         };
 
-        
         Ok(GetTaskRequest {
             task_types: self.proof_types.clone(),
             prover_height,
