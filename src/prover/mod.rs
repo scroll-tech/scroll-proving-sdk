@@ -96,6 +96,8 @@ where
             .db
             .get_task(coordinator_client.key_signer.get_public_key())
         {
+            let task_id = coordinator_task.clone().task_id;
+            log::debug!("got previous task from db, task_id: {task_id}");
             if self.proving_service.read().await.is_local() {
                 let proving_task = self.request_proving(&coordinator_task).await?;
                 proving_task_id = proving_task.task_id
