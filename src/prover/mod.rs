@@ -264,7 +264,21 @@ where
             failure_msg,
         };
 
-        let submit_proof_result = coordinator_client.submit_proof(&submit_proof_req).await?;
+        let submit_proof_result = match coordinator_client.submit_proof(&submit_proof_req).await {
+            Ok(result) => result,
+            Err(e) => {
+                info!(
+                    prover_name = ?coordinator_client.prover_name,
+                    ?coordinator_task.task_type,
+                    ?coordinator_task.uuid,
+                    ?coordinator_task.task_id,
+                    ?task.task_id,
+                    error = ?e,
+                    "Failed to submit proof due to a http error"
+                );
+                return Ok(())
+            }
+        };
 
         if submit_proof_result.errcode != ErrorCode::Success {
             info!(
@@ -275,7 +289,7 @@ where
                 ?task.task_id,
                 errcode = ?submit_proof_result.errcode,
                 errmsg = ?submit_proof_result.errmsg,
-                "Proof submit failed"
+                "Failed to submit proof due to coordinator error"
             );
         } else {
             info!(
