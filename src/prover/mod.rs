@@ -276,7 +276,7 @@ where
                     error = ?e,
                     "Failed to submit proof due to a http error"
                 );
-                return Err(e);
+                return Ok(())
             }
         };
 
