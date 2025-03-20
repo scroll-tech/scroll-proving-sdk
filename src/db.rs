@@ -12,6 +12,7 @@ impl Db {
     }
 
     pub fn get_task(&self, public_key: String) -> (Option<GetTaskResponseData>, Option<String>) {
+        log::debug!("[db], get task, public_key: {public_key}");
         (
             self.get_coordinator_task_by_public_key(public_key.clone()),
             self.get_proving_task_id_by_public_key(public_key),
@@ -24,6 +25,7 @@ impl Db {
         coordinator_task: &GetTaskResponseData,
         proving_task_id: String,
     ) {
+        log::debug!("[db], set task, public_key: {public_key}");
         self.set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
         self.set_proving_task_id_by_public_key(public_key, proving_task_id);
     }
