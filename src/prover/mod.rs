@@ -289,7 +289,7 @@ where
                 ?task.task_id,
                 errcode = ?submit_proof_result.errcode,
                 errmsg = ?submit_proof_result.errmsg,
-                "Proof submit failed"
+                "Failed to submit proof due to coordinator error"
             );
         } else {
             info!(
