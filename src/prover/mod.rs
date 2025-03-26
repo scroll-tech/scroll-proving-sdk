@@ -276,7 +276,7 @@ where
                     error = ?e,
                     "Failed to submit proof due to a http error"
                 );
-                return Ok(())
+                return Ok(());
             }
         };
 
@@ -443,7 +443,7 @@ where
         let block_num = block.number.expect("block hash without number").as_u64();
 
         let provider =
-            alloy::providers::ProviderBuilder::<_, _, sbv_primitives::Network>::default()
+            alloy::providers::ProviderBuilder::<_, _, sbv_primitives::types::Network>::default()
                 .on_http(client.provider.provider().url().clone());
 
         let witness = provider.dump_block_witness(block_num.into()).await?;
