@@ -33,10 +33,10 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 axum = "0.6.0"
 dotenv = "0.15"
 rocksdb = "0.23.0"
-sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-v2", features = [
+sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = [
     "scroll",
 ], optional = true }
-sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-v2", features = [
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = [
     "scroll",
 ], optional = true }
 url = "2.5.4"
@@ -47,8 +47,8 @@ openvm = ["dep:sbv-utils", "dep:sbv-primitives"]
 [patch.crates-io]
 # patched add rkyv support & MSRV 1.77
 alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.21" }
-revm = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
-revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
-revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
-revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
+#revm = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
+#revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
+#revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
+#revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v55" }
 ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
