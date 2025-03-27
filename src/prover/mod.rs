@@ -407,7 +407,8 @@ where
 
                 let input_map = serde_json::json!({
                     "block_witnesses": block_witnesses,
-                    "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash
+                    "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash,
+                    "fork_name": chunk_task_detail.fork_name,
                 });
 
                 Ok(ProveRequest {
