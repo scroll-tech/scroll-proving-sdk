@@ -229,7 +229,6 @@ where
                         "Task failed"
                     );
                     self.submit_proof(
-                        test
                         coordinator_client,
                         coordinator_task,
                         task,
@@ -238,7 +237,6 @@ where
                     )
                     .await?;
                     self.db.delete_task(public_key.clone());
-                    break;
                 }
             }
         }
