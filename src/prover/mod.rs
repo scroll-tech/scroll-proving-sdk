@@ -229,6 +229,7 @@ where
                         "Task failed"
                     );
                     self.submit_proof(
+                        test
                         coordinator_client,
                         coordinator_task,
                         task,
