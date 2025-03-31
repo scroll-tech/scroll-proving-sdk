@@ -9,17 +9,19 @@ pub trait ProvingService {
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
+#[derive(Default)]
 pub struct GetVkRequest {
     pub proof_types: Vec<ProofType>,
     pub circuit_version: String,
 }
 
+#[derive(Default)]
 pub struct GetVkResponse {
     pub vks: Vec<String>,
     pub error: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct ProveRequest {
     pub proof_type: ProofType,
     pub circuit_version: String,
@@ -44,6 +46,7 @@ pub struct ProveResponse {
     pub error: Option<String>,
 }
 
+#[derive(Default)]
 pub struct QueryTaskRequest {
     pub task_id: String,
 }

@@ -62,7 +62,12 @@ where
 
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
-                let key_path = PathBuf::from(&self.cfg.keys_dir).join(i.to_string());
+                let keys_dir = PathBuf::from(&self.cfg.keys_dir);
+                if !keys_dir.exists() {
+                    std::fs::create_dir_all(&keys_dir)
+                        .map_err(|e| anyhow::anyhow!("failed to create keys directory {}: {e}", keys_dir.display()))?;
+                }
+                let key_path = keys_dir.join(i.to_string());
                 KeySigner::new(&key_path)
             })
             .collect();

@@ -9,7 +9,6 @@ use crate::{
     db::Db,
     tracing_handler::L2gethClient,
 };
-use anyhow::bail;
 use axum::{routing::get, Router};
 use ethers_core::types::H256;
 use ethers_providers::Middleware;
@@ -97,6 +96,8 @@ where
             .db
             .get_task(coordinator_client.key_signer.get_public_key())
         {
+            let task_id = coordinator_task.clone().task_id;
+            log::debug!("got previous task from db, task_id: {task_id}");
             if self.proving_service.read().await.is_local() {
                 let proving_task = self.request_proving(&coordinator_task).await?;
                 proving_task_id = proving_task.task_id
@@ -116,7 +117,7 @@ where
         &self,
         coordinator_client: &CoordinatorClient,
     ) -> anyhow::Result<GetTaskResponseData> {
-        let get_task_request = self.build_get_task_request().await;
+        let get_task_request = self.build_get_task_request().await?;
         let coordinator_task = coordinator_client.get_task(&get_task_request).await?;
 
         if coordinator_task.errcode != ErrorCode::Success {
@@ -275,7 +276,7 @@ where
                     error = ?e,
                     "Failed to submit proof due to a http error"
                 );
-                return Ok(())
+                return Ok(());
             }
         };
 
@@ -303,19 +304,21 @@ where
         Ok(())
     }
 
-    async fn build_get_task_request(&self) -> GetTaskRequest {
+    async fn build_get_task_request(&self) -> anyhow::Result<GetTaskRequest> {
         let prover_height = match &self.l2geth_client {
             None => None,
             Some(l2geth_client) => match l2geth_client.block_number().await {
                 Ok(block_number) => block_number.as_number().map(|num| num.as_u64()),
-                Err(_) => None,
+                Err(e) => {
+                    anyhow::bail!("Failed get block number height. err: {:?}", e);
+                }
             },
         };
 
-        GetTaskRequest {
+        Ok(GetTaskRequest {
             task_types: self.proof_types.clone(),
             prover_height,
-        }
+        })
     }
 
     async fn build_proving_input(
@@ -350,12 +353,18 @@ where
             }
             ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                let serialized_traces = self
+                let serialized_traces = match self
                     .l2geth_client
                     .as_ref()
                     .unwrap()
                     .get_traces_by_hashes(&chunk_task_detail.block_hashes)
-                    .await?;
+                    .await
+                {
+                    Ok(traces) => traces,
+                    Err(e) => {
+                        anyhow::bail!("Failed to get traces by hashes: {:?}", e);
+                    }
+                };
                 // Note: Manually join pre-serialized traces since they are already in JSON format.
                 // Using serde_json::to_string would escape the JSON strings, creating invalid nested JSON.
                 let input = format!("[{}]", serialized_traces.join(","));
@@ -381,17 +390,32 @@ where
         match task.task_type {
             ProofType::Chunk => {
                 let chunk_task_detail: ChunkTaskDetail = serde_json::from_str(&task.task_data)?;
-                let mut witnesses = vec![];
+                let mut block_witnesses = vec![];
                 for block_hash in chunk_task_detail.block_hashes {
-                    witnesses.push(self.build_block_witness(block_hash).await?);
+                    match self.build_block_witness(block_hash).await {
+                        Ok(witness) => block_witnesses.push(witness),
+                        Err(e) => {
+                            anyhow::bail!(
+                                "Failed to build block witness for hash {:?}: {:?}",
+                                block_hash,
+                                e
+                            );
+                        }
+                    };
                 }
-                witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
+                block_witnesses.sort_by(|a, b| a.header.number.cmp(&b.header.number));
+
+                let input_map = serde_json::json!({
+                    "block_witnesses": block_witnesses,
+                    "prev_msg_queue_hash": chunk_task_detail.prev_msg_queue_hash,
+                    "fork_name": chunk_task_detail.fork_name,
+                });
 
                 Ok(ProveRequest {
                     proof_type: task.task_type,
                     circuit_version: self.circuit_version.clone(),
                     hard_fork_name: task.hard_fork_name.clone(),
-                    input: serde_json::to_string(&witnesses)?,
+                    input: serde_json::to_string(&input_map)?,
                 })
             }
             ProofType::Batch | ProofType::Bundle => Ok(ProveRequest {
@@ -400,7 +424,7 @@ where
                 hard_fork_name: task.hard_fork_name.clone(),
                 input: task.task_data.clone(),
             }),
-            _ => bail!("unsupported task type: {:?}", task.task_type),
+            _ => anyhow::bail!("unsupported task type: {:?}", task.task_type),
         }
     }
 
@@ -420,10 +444,61 @@ where
         let block_num = block.number.expect("block hash without number").as_u64();
 
         let provider =
-            alloy::providers::ProviderBuilder::<_, _, sbv_primitives::Network>::default()
+            alloy::providers::ProviderBuilder::<_, _, sbv_primitives::types::Network>::default()
                 .on_http(client.provider.provider().url().clone());
 
         let witness = provider.dump_block_witness(block_num.into()).await?;
         witness.ok_or_else(|| anyhow::anyhow!("Failed to dump block witness"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::Config;
+    use crate::prover::{
+        proving_service::{
+            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
+            QueryTaskResponse,
+        },
+        ProverBuilder, ProvingService,
+    };
+    use async_trait::async_trait;
+    use tokio;
+
+    struct MockProver {}
+
+    #[async_trait]
+    impl ProvingService for MockProver {
+        fn is_local(&self) -> bool {
+            true
+        }
+        async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
+            GetVkResponse {
+                ..Default::default()
+            }
+        }
+        async fn prove(&mut self, _: ProveRequest) -> ProveResponse {
+            ProveResponse {
+                ..Default::default()
+            }
+        }
+        async fn query_task(&mut self, _: QueryTaskRequest) -> QueryTaskResponse {
+            QueryTaskResponse {
+                ..Default::default()
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_build_get_task_request() {
+        let cfg = Config::from_file("conf/config.json".to_string()).unwrap();
+        let prover_service = MockProver {};
+        let prover = ProverBuilder::new(cfg, prover_service)
+            .build()
+            .await
+            .unwrap();
+
+        let get_task_request = prover.build_get_task_request().await;
+        assert!(get_task_request.is_err())
     }
 }

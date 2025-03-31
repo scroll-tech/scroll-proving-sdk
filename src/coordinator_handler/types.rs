@@ -126,6 +126,8 @@ pub struct GetTaskResponseData {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChunkTaskDetail {
     pub block_hashes: Vec<CommonHash>,
+    pub prev_msg_queue_hash: CommonHash,
+    pub fork_name: String,
 }
 
 #[derive(Serialize, Deserialize)] // TODO: Default?
