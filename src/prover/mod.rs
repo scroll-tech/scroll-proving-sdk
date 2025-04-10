@@ -15,6 +15,7 @@ use ethers_providers::Middleware;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::thread;
 use tokio::time::{sleep, Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tracing::{error, info, instrument};
@@ -60,6 +61,7 @@ where
             provers.spawn(async move {
                 self_clone.working_loop(i).await;
             });
+            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
         }
 
         tokio::select! {
@@ -99,7 +101,9 @@ where
             let task_id = coordinator_task.clone().task_id;
             log::debug!("got previous task from db, task_id: {task_id}");
             if self.proving_service.read().await.is_local() {
-                let proving_task = self.request_proving(&coordinator_task).await?;
+                let proving_task = self
+                    .request_proving(coordinator_client, &coordinator_task)
+                    .await?;
                 proving_task_id = proving_task.task_id
             }
             return self
@@ -108,7 +112,9 @@ where
         }
 
         let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
-        let proving_task = self.request_proving(&coordinator_task).await?;
+        let proving_task = self
+            .request_proving(coordinator_client, &coordinator_task)
+            .await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
     }
@@ -135,17 +141,45 @@ where
 
     async fn request_proving(
         &self,
+        coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponseData,
     ) -> anyhow::Result<proving_service::ProveResponse> {
-        let proving_input = self.build_proving_input(coordinator_task).await?;
+        let proving_input = match self.build_proving_input(coordinator_task).await {
+            Ok(result) => result,
+            Err(error) => {
+                self.submit_proof(
+                    coordinator_client,
+                    coordinator_task,
+                    proving_service::QueryTaskResponse::default(),
+                    ProofStatus::Error,
+                    Some(format!("failed to build proving input: error {:?}", error)),
+                )
+                .await?;
+                anyhow::bail!(
+                    "Failed to build proving input. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
+                    coordinator_task.task_type,
+                    coordinator_task.uuid,
+                    coordinator_task.task_id,
+                    error,
+                );
+            }
+        };
+
         let proving_task = self
             .proving_service
             .write()
             .await
             .prove(proving_input)
             .await;
-
         if let Some(error) = proving_task.error {
+            self.submit_proof(
+                coordinator_client,
+                coordinator_task,
+                proving_service::QueryTaskResponse::default(),
+                ProofStatus::Error,
+                Some(format!("failed to request proving: error {:?}", error)),
+            )
+            .await?;
             anyhow::bail!(
                 "Failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
                 coordinator_task.task_type,
