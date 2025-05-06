@@ -1,8 +1,5 @@
 use super::error::ErrorCode;
-use crate::{
-    prover::{ProofType, ProverProviderType},
-    tracing_handler::CommonHash,
-};
+use crate::prover::{ProofType, ProverProviderType};
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -121,13 +118,6 @@ pub struct GetTaskResponseData {
     pub task_type: ProofType,
     pub task_data: String,
     pub hard_fork_name: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ChunkTaskDetail {
-    pub block_hashes: Vec<CommonHash>,
-    pub prev_msg_queue_hash: CommonHash,
-    pub fork_name: String,
 }
 
 #[derive(Serialize, Deserialize)] // TODO: Default?

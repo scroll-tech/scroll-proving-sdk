@@ -1,6 +1,6 @@
 use tokio::sync::RwLock;
 
-use super::{ProofType, ProverProviderType};
+use super::ProverProviderType;
 use crate::{
     config::Config,
     coordinator_handler::{CoordinatorClient, KeySigner},
@@ -9,7 +9,6 @@ use crate::{
         proving_service::{GetVkRequest, ProvingService},
         Prover,
     },
-    tracing_handler::L2gethClient,
     utils::format_cloud_prover_name,
 };
 use std::path::PathBuf;
@@ -33,16 +32,6 @@ where
     pub async fn build(self) -> anyhow::Result<Prover<Backend>> {
         if self.proving_service.is_local() && self.cfg.prover.n_workers > 1 {
             anyhow::bail!("cannot use multiple workers with local proving service");
-        }
-
-        if self
-            .cfg
-            .prover
-            .supported_proof_types
-            .contains(&ProofType::Chunk)
-            && self.cfg.l2geth.is_none()
-        {
-            anyhow::bail!("circuit_type is chunk but l2geth config is not provided");
         }
 
         let get_vk_request = GetVkRequest {
@@ -98,21 +87,14 @@ where
             .collect();
         let coordinator_clients = coordinator_clients?;
 
-        let l2geth_client = match self.cfg.l2geth {
-            Some(l2geth) => Some(L2gethClient::new(l2geth)?),
-            None => None,
-        };
-
         let db_path = self.cfg.db_path.unwrap_or_else(|| {
             panic!("Missing database path");
         });
 
         Ok(Prover {
-            circuit_type: self.cfg.prover.circuit_type,
             proof_types: self.cfg.prover.supported_proof_types,
             circuit_version: self.cfg.prover.circuit_version,
             coordinator_clients,
-            l2geth_client,
             proving_service: RwLock::new(self.proving_service),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
