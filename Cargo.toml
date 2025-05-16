@@ -42,6 +42,7 @@ sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifie
 url = "2.5.4"
 
 [features]
+default = ["openvm"]
 openvm = ["dep:sbv-utils", "dep:sbv-primitives"]
 
 [patch.crates-io]
