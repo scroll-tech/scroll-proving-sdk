@@ -485,8 +485,10 @@ where
         if let Some(block_witness) = &mut witness {
             if block_num == 15525239 {
                 let bytes =
-                    "0xe19f3b3794390b239dd17cf11093695d47e6bbbd98f327bf64d18c7ac2ef21abaa03".into();
-                block_witness.states.push(bytes)
+                    "0xe19f3b3794390b239dd17cf11093695d47e6bbbd98f327bf64d18c7ac2ef21abaa03"
+                        .parse::<sbv_primitives::Bytes>()
+                        .unwrap();
+                block_witness.states.push(bytes.into())
             }
         }
         witness.ok_or_else(|| anyhow::anyhow!("Failed to dump block witness"))
