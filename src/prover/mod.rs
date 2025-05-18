@@ -483,12 +483,17 @@ where
 
         let mut witness = provider.dump_block_witness(block_num.into()).await?;
         if let Some(block_witness) = &mut witness {
-            if block_num == 15525239 {
+            if block_num == 15568365 {
                 let bytes =
-                    "0xe19f3b3794390b239dd17cf11093695d47e6bbbd98f327bf64d18c7ac2ef21abaa03"
+                    "0xe2a020a4e067d8e8d38a7962279bc4c7fe2e0b9ba130201006c3313596663e7d523102",
                         .parse::<sbv_primitives::Bytes>()
                         .unwrap();
-                block_witness.states.push(bytes.into())
+                block_witness.states.push(bytes.into());
+                let bytes =
+                    "0xe7a020f685127c890c96a1d6ae8c969e3bc0d7294d76d5aa808bb16278fbc7f6a382858413000014",
+                        .parse::<sbv_primitives::Bytes>()
+                        .unwrap();
+                block_witness.states.push(bytes.into());
             }
         }
         witness.ok_or_else(|| anyhow::anyhow!("Failed to dump block witness"))
