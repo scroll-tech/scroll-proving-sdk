@@ -109,6 +109,7 @@ pub type ChallengeResponseData = LoginResponseData;
 pub struct GetTaskRequest {
     pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
+    pub universal: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -129,6 +130,7 @@ pub struct SubmitProofRequest {
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,
     pub failure_msg: Option<String>,
+    pub universal: bool,
 }
 
 #[derive(Serialize, Deserialize)]

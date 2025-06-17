@@ -281,6 +281,7 @@ where
         failure_msg: Option<String>,
     ) -> anyhow::Result<()> {
         let submit_proof_req = SubmitProofRequest {
+            universal: true,
             uuid: coordinator_task.uuid.clone(),
             task_id: coordinator_task.task_id.clone(),
             task_type: coordinator_task.task_type,
@@ -334,6 +335,7 @@ where
         Ok(GetTaskRequest {
             task_types: self.proof_types.clone(),
             prover_height,
+            universal: true,
         })
     }
 
