@@ -62,6 +62,54 @@ where
         }
     }
 
+    pub async fn one_shot(
+        self: std::sync::Arc<Self>,
+        tasks: &[String],
+        task_type: ProofType,
+    ) -> bool {
+        assert!(self.n_workers == self.coordinator_clients.len());
+
+        self.test_coordinator_connection().await;
+
+        let mut provers = JoinSet::new();
+        let mut work_set = Vec::from_iter(0..self.n_workers);
+        for task in tasks {
+            while work_set.is_empty() {
+                let ret = provers.join_next().await.expect("joinset must not empty");
+                if let Ok(i) = ret {
+                    work_set.push(i)
+                } else {
+                    // quit since one task has failed
+                    return false;
+                }
+            }
+
+            let self_clone = self.clone();
+            let task_str = task.to_string();
+            let i = work_set.pop().expect("can not be empty");
+            provers.spawn(async move {
+                let coordinator_client = &self_clone.coordinator_clients[i];
+                let prover_name = &coordinator_client.prover_name;
+
+                info!(?prover_name, "Getting task from coordinator");
+
+                if let Err(e) = self_clone
+                    .handle_task(coordinator_client, Some((task_type, task_str.as_str())))
+                    .await
+                {
+                    error!(?prover_name, ?e, "Error handling task");
+                    panic!("task fail");
+                }
+                i
+            });
+            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
+        }
+
+        // wait until all tasks has been done
+        while provers.join_next().await.is_some() {}
+        true
+    }
+
     async fn test_coordinator_connection(&self) {
         self.coordinator_clients[0]
             .get_token(true)
@@ -77,7 +125,7 @@ where
 
             info!(?prover_name, "Getting task from coordinator");
 
-            if let Err(e) = self.handle_task(coordinator_client).await {
+            if let Err(e) = self.handle_task(coordinator_client, None).await {
                 error!(?prover_name, ?e, "Error handling task");
             }
 
@@ -85,7 +133,11 @@ where
         }
     }
 
-    async fn handle_task(&self, coordinator_client: &CoordinatorClient) -> anyhow::Result<()> {
+    async fn handle_task(
+        &self,
+        coordinator_client: &CoordinatorClient,
+        task_spec: Option<(ProofType, &str)>,
+    ) -> anyhow::Result<()> {
         if let (Some(coordinator_task), Some(mut proving_task_id)) = self
             .db
             .get_task(coordinator_client.key_signer.get_public_key())
@@ -103,7 +155,14 @@ where
                 .await;
         }
 
-        let coordinator_task = self.get_coordinator_task(coordinator_client).await?;
+        let mut get_task_request = self.build_get_task_request(None)?;
+        if let Some((t, s)) = task_spec {
+            get_task_request.task_types = vec![t];
+            get_task_request.task_id.replace(s.to_string());
+        }
+        let coordinator_task = self
+            .get_coordinator_task(coordinator_client, &get_task_request)
+            .await?;
         let proving_task = self
             .request_proving(coordinator_client, &coordinator_task)
             .await?;
@@ -114,9 +173,9 @@ where
     async fn get_coordinator_task(
         &self,
         coordinator_client: &CoordinatorClient,
+        request: &GetTaskRequest,
     ) -> anyhow::Result<GetTaskResponseData> {
-        let get_task_request = self.build_get_task_request(None)?;
-        let coordinator_task = coordinator_client.get_task(&get_task_request).await?;
+        let coordinator_task = coordinator_client.get_task(request).await?;
 
         if coordinator_task.errcode != ErrorCode::Success {
             anyhow::bail!(
@@ -336,6 +395,7 @@ where
             task_types: self.proof_types.clone(),
             prover_height,
             universal: true,
+            task_id: None,
         })
     }
 

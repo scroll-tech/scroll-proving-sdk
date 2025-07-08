@@ -110,6 +110,7 @@ pub struct GetTaskRequest {
     pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
     pub universal: bool,
+    pub task_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]

@@ -84,9 +84,9 @@ impl CoordinatorClient {
         self.login(token_guard).await
     }
 
-    async fn login<'t>(
+    async fn login(
         &self,
-        mut token_guard: MutexGuard<'t, Option<String>>,
+        mut token_guard: MutexGuard<'_, Option<String>>,
     ) -> anyhow::Result<String> {
         let challenge_response = self
             .api
