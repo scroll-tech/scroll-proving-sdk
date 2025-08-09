@@ -473,6 +473,6 @@ mod tests {
             .unwrap();
 
         let get_task_request = prover.build_get_task_request(None);
-        assert!(get_task_request.is_err())
+        assert!(get_task_request.is_ok())
     }
 }
