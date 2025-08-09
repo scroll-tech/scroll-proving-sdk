@@ -87,10 +87,6 @@ where
             .collect();
         let coordinator_clients = coordinator_clients?;
 
-        let db_path = self.cfg.db_path.unwrap_or_else(|| {
-            panic!("Missing database path");
-        });
-
         Ok(Prover {
             proof_types: self.cfg.prover.supported_proof_types,
             circuit_version: self.cfg.prover.circuit_version,
@@ -98,7 +94,12 @@ where
             proving_service: RwLock::new(self.proving_service),
             n_workers: self.cfg.prover.n_workers,
             health_listener_addr: self.cfg.health_listener_addr,
-            db: Db::new(&db_path)?,
+            db: self
+                .cfg
+                .db_path
+                .as_ref()
+                .map(|path| Db::new(path.as_str()))
+                .transpose()?,
         })
     }
 }

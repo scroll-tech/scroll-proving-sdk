@@ -28,7 +28,7 @@ pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     proving_service: RwLock<Backend>,
     n_workers: usize,
     health_listener_addr: String,
-    db: Db,
+    db: Option<Db>,
 }
 
 impl<Backend> Prover<Backend>
@@ -140,7 +140,9 @@ where
     ) -> anyhow::Result<()> {
         if let (Some(coordinator_task), Some(mut proving_task_id)) = self
             .db
-            .get_task(coordinator_client.key_signer.get_public_key())
+            .as_ref()
+            .map(|db| db.get_task(coordinator_client.key_signer.get_public_key()))
+            .unwrap_or_default()
         {
             let task_id = coordinator_task.clone().task_id;
             log::debug!("got previous task from db, task_id: {task_id}");
@@ -276,11 +278,13 @@ where
                         status = ?task.status,
                         "Task status update"
                     );
-                    self.db.set_task(
-                        public_key.clone(),
-                        coordinator_task,
-                        proving_service_task_id.clone(),
-                    );
+                    if let Some(db) = &self.db {
+                        db.set_task(
+                            public_key.clone(),
+                            coordinator_task,
+                            proving_service_task_id.clone(),
+                        );
+                    }
                     sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
                 }
                 TaskStatus::Success => {
@@ -300,7 +304,9 @@ where
                         None,
                     )
                     .await?;
-                    self.db.delete_task(public_key.clone());
+                    if let Some(db) = &self.db {
+                        db.delete_task(public_key.clone());
+                    }
                     break;
                 }
                 TaskStatus::Failed => {
@@ -322,7 +328,9 @@ where
                         Some(task_err),
                     )
                     .await?;
-                    self.db.delete_task(public_key.clone());
+                    if let Some(db) = &self.db {
+                        db.delete_task(public_key.clone());
+                    }
                     break;
                 }
             }
