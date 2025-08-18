@@ -1,8 +1,5 @@
 use super::error::ErrorCode;
-use crate::{
-    prover::{ProofType, ProverProviderType},
-    tracing_handler::CommonHash,
-};
+use crate::prover::{ProofType, ProverProviderType};
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -112,6 +109,8 @@ pub type ChallengeResponseData = LoginResponseData;
 pub struct GetTaskRequest {
     pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
+    pub universal: bool,
+    pub task_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -123,13 +122,6 @@ pub struct GetTaskResponseData {
     pub hard_fork_name: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct ChunkTaskDetail {
-    pub block_hashes: Vec<CommonHash>,
-    pub prev_msg_queue_hash: CommonHash,
-    pub fork_name: String,
-}
-
 #[derive(Serialize, Deserialize)] // TODO: Default?
 pub struct SubmitProofRequest {
     pub uuid: String,
@@ -139,6 +131,7 @@ pub struct SubmitProofRequest {
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,
     pub failure_msg: Option<String>,
+    pub universal: bool,
 }
 
 #[derive(Serialize, Deserialize)]

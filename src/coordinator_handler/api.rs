@@ -109,6 +109,13 @@ impl Api {
         token: &String,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
+        if self.send_timeout < core::time::Duration::from_secs(600) {
+            tracing::warn!(
+                "get_task API is time-consuming, timeout setting is too low ({}), set it to more than 600s",
+                self.send_timeout.as_secs(),
+            );
+        }
+
         self.post_with_token(method, req, token).await
     }
 

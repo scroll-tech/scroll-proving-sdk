@@ -1,51 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum CircuitType {
-    #[default]
-    Undefined,
-    Halo2,
-    OpenVM,
-}
-
-impl CircuitType {
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            1 => CircuitType::Halo2,
-            2 => CircuitType::OpenVM,
-            _ => CircuitType::Undefined,
-        }
-    }
-
-    pub fn to_u8(self) -> u8 {
-        match self {
-            CircuitType::Undefined => 0,
-            CircuitType::Halo2 => 1,
-            CircuitType::OpenVM => 2,
-        }
-    }
-}
-
-impl Serialize for CircuitType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u8(self.to_u8())
-    }
-}
-
-impl<'de> Deserialize<'de> for CircuitType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v: u8 = u8::deserialize(deserializer)?;
-        Ok(CircuitType::from_u8(v))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[repr(u8)]
 pub enum ProverProviderType {
     #[default]

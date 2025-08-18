@@ -1,7 +1,4 @@
-use crate::{
-    coordinator_handler::ProverType,
-    prover::{CircuitType, ProofType},
-};
+use crate::{coordinator_handler::ProverType, prover::ProofType};
 use anyhow::{anyhow, Result};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -14,7 +11,6 @@ pub struct Config {
     pub keys_dir: String,
     pub db_path: Option<String>,
     pub coordinator: CoordinatorConfig,
-    pub l2geth: Option<L2GethConfig>,
     pub prover: ProverConfig,
     #[serde(default = "default_health_listener_addr")]
     pub health_listener_addr: String,
@@ -29,13 +25,7 @@ pub struct CoordinatorConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct L2GethConfig {
-    pub endpoint: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProverConfig {
-    pub circuit_type: CircuitType,
     pub supported_proof_types: Vec<ProofType>,
     pub circuit_version: String,
     #[serde(default = "default_n_workers")]
@@ -93,11 +83,6 @@ impl Config {
         if let Some(val) = Self::get_env_var("COORDINATOR_BASE_URL")? {
             self.coordinator.base_url = val;
         }
-        if let Some(val) = Self::get_env_var("L2GETH_ENDPOINT")? {
-            if let Some(l2geth) = &mut self.l2geth {
-                l2geth.endpoint = val;
-            }
-        }
 
         if let Some(val) = Self::get_env_var("PROOF_TYPES")? {
             let values_vec: Vec<&str> = val
@@ -129,28 +114,6 @@ impl Config {
     }
 
     pub fn coordinator_prover_type(&self) -> Vec<ProverType> {
-        if self.prover.circuit_type == CircuitType::OpenVM {
-            vec![ProverType::OpenVM]
-        } else {
-            let mut prover_types = vec![];
-            if self
-                .prover
-                .supported_proof_types
-                .iter()
-                .any(|t| *t == ProofType::Bundle || *t == ProofType::Batch)
-            {
-                prover_types.push(ProverType::Batch)
-            }
-
-            if self
-                .prover
-                .supported_proof_types
-                .contains(&ProofType::Chunk)
-            {
-                prover_types.push(ProverType::Chunk)
-            }
-
-            prover_types
-        }
+        vec![ProverType::OpenVM]
     }
 }
