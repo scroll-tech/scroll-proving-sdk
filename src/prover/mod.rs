@@ -126,7 +126,7 @@ where
             info!(?prover_name, "Getting task from coordinator");
 
             if let Err(e) = self.handle_task(coordinator_client, None).await {
-                error!(?prover_name, ?e, "Error handling task");
+                error!(prover_name, e, "Error handling task");
             }
 
             sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
