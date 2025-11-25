@@ -106,7 +106,14 @@ where
         }
 
         // wait until all tasks has been done
-        while provers.join_next().await.is_some() {}
+        while let Some(r) = provers.join_next().await {
+            if r.is_err() {
+                // quit since one task has failed
+                return false;
+            } else {
+                log::info!("worker {} has completed", r.unwrap());
+            }
+        }
         true
     }
 
