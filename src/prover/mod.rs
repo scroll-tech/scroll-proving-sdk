@@ -12,7 +12,6 @@ use axum::{routing::get, Router};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::thread;
 use tokio::time::{sleep, Duration};
 use tokio::{sync::RwLock, task::JoinSet};
 use tracing::{error, info, instrument};
@@ -36,7 +35,7 @@ where
     Backend: ProvingService + Send + Sync + 'static,
 {
     pub async fn run(self) {
-        assert!(self.n_workers == self.coordinator_clients.len());
+        assert_eq!(self.n_workers, self.coordinator_clients.len());
 
         self.test_coordinator_connection().await;
 
@@ -53,7 +52,7 @@ where
             provers.spawn(async move {
                 self_clone.working_loop(i).await;
             });
-            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
+            tokio::time::sleep(Duration::from_secs(3)).await; // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
         }
 
         tokio::select! {
@@ -67,7 +66,7 @@ where
         tasks: &[String],
         task_type: ProofType,
     ) -> bool {
-        assert!(self.n_workers == self.coordinator_clients.len());
+        assert_eq!(self.n_workers, self.coordinator_clients.len());
 
         self.test_coordinator_connection().await;
 
@@ -102,17 +101,16 @@ where
                 }
                 i
             });
-            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
+            tokio::time::sleep(Duration::from_secs(3)).await; // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
         }
 
         // wait until all tasks has been done
         while let Some(r) = provers.join_next().await {
-            if r.is_err() {
+            let Ok(r) = r else {
                 // quit since one task has failed
                 return false;
-            } else {
-                log::info!("worker {} has completed", r.unwrap());
-            }
+            };
+            info!("worker {r} has completed");
         }
         true
     }
@@ -152,7 +150,7 @@ where
             .unwrap_or_default()
         {
             let task_id = coordinator_task.clone().task_id;
-            log::debug!("got previous task from db, task_id: {task_id}");
+            debug!(task_id = %task_id, "got previous task from db");
             if self.proving_service.read().await.is_local() {
                 let proving_task = self
                     .request_proving(coordinator_client, &coordinator_task)

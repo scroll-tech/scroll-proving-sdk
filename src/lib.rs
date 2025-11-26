@@ -1,3 +1,5 @@
+#[macro_use] extern crate tracing;
+
 pub mod config;
 pub mod coordinator_handler;
 pub mod db;

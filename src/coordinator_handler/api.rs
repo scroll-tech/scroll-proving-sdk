@@ -1,3 +1,4 @@
+use tracing::Level;
 use super::{
     ChallengeResponseData, GetTaskRequest, GetTaskResponseData, LoginRequest, LoginResponseData,
     Response, SubmitProofRequest, SubmitProofResponseData,
@@ -37,6 +38,7 @@ impl Api {
         self.base_url.join(method).map_err(|e| anyhow::anyhow!(e))
     }
 
+    #[instrument(target = "coordinator_client", skip(self, req), level = Level::DEBUG)]
     async fn post_with_token<Req, Resp>(
         &self,
         method: &str,
@@ -51,8 +53,8 @@ impl Api {
         let request_body = serde_json::to_string(req)?;
         let size = request_body.len();
 
-        log::info!("[coordinator client], {method}, sent request");
-        log::debug!("[coordinator client], {method}, request: {request_body}, token: {token}, request size: {size}");
+        info!("sent request");
+        debug!(request_body = %request_body, size = %size);
         let response = self
             .client
             .post(url)
@@ -72,8 +74,8 @@ impl Api {
 
         let response_body = response.text().await?;
 
-        log::info!("[coordinator client], {method}, received response");
-        log::debug!("[coordinator client], {method}, response: {response_body}");
+        info!("received response");
+        debug!(response_body = %response_body);
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 
@@ -109,7 +111,7 @@ impl Api {
         token: &String,
     ) -> anyhow::Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
-        if self.send_timeout < core::time::Duration::from_secs(600) {
+        if self.send_timeout < Duration::from_secs(600) {
             tracing::warn!(
                 "get_task API is time-consuming, timeout setting is too low ({}), set it to more than 600s",
                 self.send_timeout.as_secs(),

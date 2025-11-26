@@ -9,19 +9,19 @@ pub trait ProvingService {
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GetVkRequest {
     pub proof_types: Vec<ProofType>,
     pub circuit_version: String,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GetVkResponse {
     pub vks: Vec<String>,
     pub error: Option<String>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProveRequest {
     pub proof_type: ProofType,
     pub circuit_version: String,
@@ -29,7 +29,7 @@ pub struct ProveRequest {
     pub input: String,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct ProveResponse {
     pub task_id: String,
     pub proof_type: ProofType,
@@ -46,12 +46,12 @@ pub struct ProveResponse {
     pub error: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryTaskRequest {
     pub task_id: String,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct QueryTaskResponse {
     pub task_id: String,
     pub proof_type: ProofType,
@@ -68,7 +68,7 @@ pub struct QueryTaskResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TaskStatus {
     #[default]
     Queued,

@@ -36,7 +36,7 @@ impl ErrorCode {
             50000 => ErrorCode::ErrJWTCommonErr,
             50001 => ErrorCode::ErrJWTTokenExpired,
             _ => {
-                log::error!("get unexpected error code from coordinator: {v}");
+                error!("get unexpected error code from coordinator: {v}");
                 ErrorCode::Undefined(v)
             }
         }
