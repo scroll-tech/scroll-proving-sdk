@@ -1,6 +1,6 @@
-use std::fmt;
 use super::ProofType;
 use async_trait::async_trait;
+use std::fmt;
 
 #[async_trait]
 pub trait ProvingService {
@@ -91,7 +91,6 @@ impl fmt::Debug for ProveResponse {
         fmt.finish()
     }
 }
-
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryTaskRequest {

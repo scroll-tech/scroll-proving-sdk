@@ -1,4 +1,3 @@
-use tracing::Level;
 use super::{
     ChallengeResponseData, GetTaskRequest, GetTaskResponseData, LoginRequest, LoginResponseData,
     Response, SubmitProofRequest, SubmitProofResponseData,
@@ -9,6 +8,7 @@ use reqwest::{header::CONTENT_TYPE, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::Serialize;
+use tracing::Level;
 
 pub struct Api {
     pub base_url: Url,

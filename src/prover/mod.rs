@@ -1,7 +1,6 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
-use tracing::Level;
 use crate::{
     coordinator_handler::{
         CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
@@ -15,6 +14,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::time::{sleep, Duration};
 use tokio::{sync::RwLock, task::JoinSet};
+use tracing::Level;
 use tracing::{error, info, instrument};
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
