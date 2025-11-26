@@ -29,9 +29,9 @@ where
         }
     }
 
-    pub async fn build(self) -> anyhow::Result<Prover<Backend>> {
+    pub async fn build(self) -> eyre::Result<Prover<Backend>> {
         if self.proving_service.is_local() && self.cfg.prover.n_workers > 1 {
-            anyhow::bail!("cannot use multiple workers with local proving service");
+            eyre::bail!("cannot use multiple workers with local proving service");
         }
 
         let get_vk_request = GetVkRequest {
@@ -40,7 +40,7 @@ where
         };
         let get_vk_response = self.proving_service.get_vks(get_vk_request).await;
         if let Some(error) = get_vk_response.error {
-            anyhow::bail!("failed to get vk: {}", error);
+            eyre::bail!("failed to get vk: {}", error);
         }
 
         let prover_provider_type = if self.proving_service.is_local() {
@@ -54,7 +54,7 @@ where
                 let keys_dir = PathBuf::from(&self.cfg.keys_dir);
                 if !keys_dir.exists() {
                     std::fs::create_dir_all(&keys_dir).map_err(|e| {
-                        anyhow::anyhow!(
+                        eyre::eyre!(
                             "failed to create keys directory {}: {e}",
                             keys_dir.display()
                         )
@@ -65,7 +65,7 @@ where
             })
             .collect();
         let key_signers =
-            key_signers.map_err(|e| anyhow::anyhow!("cannot create key_signer, err: {e}"))?;
+            key_signers.map_err(|e| eyre::eyre!("cannot create key_signer, err: {e}"))?;
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {

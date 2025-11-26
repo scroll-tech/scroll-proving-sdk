@@ -1,6 +1,8 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
+
+use std::future::IntoFuture;
 use crate::{
     coordinator_handler::{
         CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
@@ -14,6 +16,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::time::{sleep, Duration};
 use tokio::{sync::RwLock, task::JoinSet};
+use tokio::net::TcpListener;
 use tracing::Level;
 use tracing::{error, info, instrument};
 
@@ -43,7 +46,10 @@ where
         let app = Router::new().route("/", get(|| async { "OK" }));
         let addr = SocketAddr::from_str(&self.health_listener_addr)
             .expect("Failed to parse socket address");
-        let server = axum::Server::bind(&addr).serve(app.into_make_service());
+        let listener = TcpListener::bind(addr)
+            .await
+            .expect("Failed to bind health check listener");
+        let server = axum::serve(listener, app).into_future();
         let health_check_server_task = tokio::spawn(server);
 
         let mut provers = JoinSet::new();
@@ -143,7 +149,7 @@ where
         &self,
         coordinator_client: &CoordinatorClient,
         task_spec: Option<(ProofType, &str)>,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         if let (Some(coordinator_task), Some(mut proving_task_id)) = self
             .db
             .as_ref()
@@ -182,11 +188,11 @@ where
         &self,
         coordinator_client: &CoordinatorClient,
         request: &GetTaskRequest,
-    ) -> anyhow::Result<GetTaskResponseData> {
+    ) -> eyre::Result<GetTaskResponseData> {
         let coordinator_task = coordinator_client.get_task(request).await?;
 
         if coordinator_task.errcode != ErrorCode::Success {
-            anyhow::bail!(
+            eyre::bail!(
                 "Failed to get task, errcode: {:?}, errmsg: {:?}",
                 coordinator_task.errcode,
                 coordinator_task.errmsg
@@ -195,14 +201,14 @@ where
 
         coordinator_task
             .data
-            .ok_or_else(|| anyhow::anyhow!("No task available"))
+            .ok_or_else(|| eyre::eyre!("No task available"))
     }
 
     async fn request_proving(
         &self,
         coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponseData,
-    ) -> anyhow::Result<proving_service::ProveResponse> {
+    ) -> eyre::Result<proving_service::ProveResponse> {
         let proving_input = match self.get_proving_input(coordinator_task) {
             Ok(result) => result,
             Err(error) => {
@@ -214,7 +220,7 @@ where
                     Some(format!("failed to build proving input: error {:?}", error)),
                 )
                 .await?;
-                anyhow::bail!(
+                eyre::bail!(
                     "Failed to build proving input. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
                     coordinator_task.task_type,
                     coordinator_task.uuid,
@@ -239,7 +245,7 @@ where
                 Some(format!("failed to request proving: error {:?}", error)),
             )
             .await?;
-            anyhow::bail!(
+            eyre::bail!(
                 "Failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
                 coordinator_task.task_type,
                 coordinator_task.uuid,
@@ -256,7 +262,7 @@ where
         coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponseData,
         proving_service_task_id: String,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         let prover_name = &coordinator_client.prover_name;
         let public_key = &coordinator_client.key_signer.get_public_key();
         let task_type = coordinator_task.task_type;
@@ -352,7 +358,7 @@ where
         task: proving_service::QueryTaskResponse,
         status: ProofStatus,
         failure_msg: Option<String>,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         let submit_proof_req = SubmitProofRequest {
             universal: true,
             uuid: coordinator_task.uuid.clone(),
@@ -404,7 +410,7 @@ where
         Ok(())
     }
 
-    fn build_get_task_request(&self, prover_height: Option<u64>) -> anyhow::Result<GetTaskRequest> {
+    fn build_get_task_request(&self, prover_height: Option<u64>) -> eyre::Result<GetTaskRequest> {
         Ok(GetTaskRequest {
             task_types: self.proof_types.clone(),
             prover_height,
@@ -413,8 +419,8 @@ where
         })
     }
 
-    fn get_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
-        anyhow::ensure!(
+    fn get_proving_input(&self, task: &GetTaskResponseData) -> eyre::Result<ProveRequest> {
+        eyre::ensure!(
             self.proof_types.contains(&task.task_type),
             "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
             self.proof_types,
