@@ -2578,7 +2578,6 @@ dependencies = [
  "ethers-providers",
  "hex",
  "http 1.2.0",
- "log",
  "rand",
  "reqwest 0.12.12",
  "reqwest-middleware",

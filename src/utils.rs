@@ -1,4 +1,5 @@
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+use tracing_subscriber::fmt::format::FmtSpan;
 
 static DEFAULT_COMMIT: &str = "unknown";
 static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -27,6 +28,7 @@ pub fn init_tracing() {
         .with_ansi(false)
         .with_level(true)
         .with_target(true)
+        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .try_init()
         .expect("Failed to initialize tracing subscriber");
 }
