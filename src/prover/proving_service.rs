@@ -76,10 +76,10 @@ impl fmt::Debug for ProveResponse {
         if let Some(compute_time_sec) = &self.compute_time_sec {
             fmt.field("compute_time_sec", compute_time_sec);
         }
-        if let Some(_) = &self.input {
+        if self.input.is_some() {
             fmt.field("input", &"..."); // Hide actual input for brevity
         }
-        if let Some(_) = &self.proof {
+        if self.proof.is_some() {
             fmt.field("proof", &"..."); // Hide actual proof for brevity
         }
         if let Some(vk) = &self.vk {
@@ -133,10 +133,10 @@ impl fmt::Debug for QueryTaskResponse {
         if let Some(compute_time_sec) = &self.compute_time_sec {
             fmt.field("compute_time_sec", compute_time_sec);
         }
-        if let Some(_) = &self.input {
+        if self.input.is_some() {
             fmt.field("input", &"..."); // Hide actual input for brevity
         }
-        if let Some(_) = &self.proof {
+        if self.proof.is_some() {
             fmt.field("proof", &"..."); // Hide actual proof for brevity
         }
         if let Some(vk) = &self.vk {
