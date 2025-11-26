@@ -28,7 +28,7 @@ pub fn init_tracing() {
         .with_ansi(false)
         .with_level(true)
         .with_target(true)
-        .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
+        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .try_init()
         .expect("Failed to initialize tracing subscriber");
 }

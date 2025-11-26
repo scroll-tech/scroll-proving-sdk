@@ -1,6 +1,7 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
+use tracing::Level;
 use crate::{
     coordinator_handler::{
         CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
@@ -122,7 +123,7 @@ where
             .expect("Failed to login to coordinator");
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), level = Level::DEBUG)]
     async fn working_loop(&self, i: usize) {
         loop {
             let coordinator_client = &self.coordinator_clients[i];
