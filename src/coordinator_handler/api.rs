@@ -38,7 +38,7 @@ impl Api {
         self.base_url.join(method).map_err(|e| anyhow::anyhow!(e))
     }
 
-    #[instrument(target = "coordinator_client", skip(self, req), level = Level::DEBUG)]
+    #[instrument(target = "coordinator_client", skip(self, req, token), level = Level::DEBUG)]
     async fn post_with_token<Req, Resp>(
         &self,
         method: &str,
@@ -54,7 +54,7 @@ impl Api {
         let size = request_body.len();
 
         info!("sent request");
-        debug!(request_body = %request_body, size = %size);
+        trace!(token = %token, request_body = %request_body, size = %size);
         let response = self
             .client
             .post(url)
@@ -75,7 +75,7 @@ impl Api {
         let response_body = response.text().await?;
 
         info!("received response");
-        debug!(response_body = %response_body);
+        trace!(response_body = %response_body);
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 
