@@ -158,12 +158,10 @@ where
         {
             let task_id = coordinator_task.clone().task_id;
             debug!(task_id = %task_id, "got previous task from db");
-            if self.proving_service.read().await.is_local() {
-                let proving_task = self
-                    .request_proving(coordinator_client, &coordinator_task)
-                    .await?;
-                proving_task_id = proving_task.task_id
-            }
+            let proving_task = self
+                .request_proving(coordinator_client, &coordinator_task)
+                .await?;
+            proving_task_id = proving_task.task_id;
             return self
                 .handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
                 .await;
