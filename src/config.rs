@@ -30,8 +30,13 @@ pub struct ProverConfig {
     pub circuit_version: String,
     #[serde(default = "default_n_workers")]
     pub n_workers: usize,
+    /// Interval between polling the coordinator for new tasks.
     #[serde(default = "default_poll_interval_sec")]
     pub poll_interval_sec: u64,
+    /// Delay the timer by a randomly selected, evenly distributed amount of time between 0 and the
+    /// specified time value. Defaults to 0, indicating that no randomized delay shall be applied.
+    #[serde(default)]
+    pub randomized_delay_sec: u64,
     #[serde(default)]
     pub suppress_empty_task_error: bool,
 }
@@ -120,6 +125,9 @@ impl Config {
 
         if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {
             self.prover.poll_interval_sec = val.parse()?;
+        }
+        if let Some(val) = Self::get_env_var("RANDOMIZED_DELAY_SEC")? {
+            self.prover.randomized_delay_sec = val.parse()?;
         }
 
         if Self::get_env_var("SUPPRESS_EMPTY_TASK_ERR")?.is_some() {

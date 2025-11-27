@@ -98,6 +98,7 @@ where
                 .map(|path| Db::new(path.as_str()))
                 .transpose()?,
             poll_interval_sec: self.cfg.prover.poll_interval_sec,
+            randomized_delay_sec: self.cfg.prover.randomized_delay_sec,
             suppress_empty_task_error: self.cfg.prover.suppress_empty_task_error,
         })
     }
