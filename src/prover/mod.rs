@@ -291,7 +291,7 @@ where
                 })
                 .await;
 
-            let current_status = task.status; // capture for comparison
+            let current_status = task.status;
 
             match current_status {
                 TaskStatus::Queued | TaskStatus::Proving => {
