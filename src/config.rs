@@ -1,6 +1,6 @@
 use crate::{coordinator_handler::ProverType, prover::ProofType};
-use dotenvy::dotenv;
 use eyre::{eyre, Result};
+use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
