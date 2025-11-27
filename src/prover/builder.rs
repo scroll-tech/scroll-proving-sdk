@@ -43,11 +43,8 @@ where
             eyre::bail!("failed to get vk: {}", error);
         }
 
-        let prover_provider_type = if self.proving_service.is_local() {
-            ProverProviderType::Internal
-        } else {
-            ProverProviderType::External
-        };
+        // FIXME: should derive from `self.proving_service.is_local()`, but coordinator has a bug when handling external provers
+        let prover_provider_type = ProverProviderType::Internal;
 
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
