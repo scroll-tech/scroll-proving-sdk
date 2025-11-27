@@ -17,17 +17,17 @@ use tiny_keccak::{Hasher, Keccak};
 
 const DEFAULT_KEY_SIZE: usize = 32usize;
 
-fn read_key_from_disk(key_path: &PathBuf) -> anyhow::Result<Vec<u8>> {
+fn read_key_from_disk(key_path: &PathBuf) -> eyre::Result<Vec<u8>> {
     let mut file = File::open(key_path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     Ok(hex::decode(content)?)
 }
 
-fn gen_key_save_to_disk(key_path: &PathBuf) -> anyhow::Result<Vec<u8>> {
+fn gen_key_save_to_disk(key_path: &PathBuf) -> eyre::Result<Vec<u8>> {
     // Generate a random private key.
     let mut secret = vec![0u8; DEFAULT_KEY_SIZE];
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     rng.fill_bytes(secret.as_mut_slice());
 
     let content = hex::encode(secret.clone());
@@ -44,7 +44,7 @@ pub struct KeySigner {
 }
 
 impl KeySigner {
-    pub fn new(key_path: &PathBuf) -> anyhow::Result<Self> {
+    pub fn new(key_path: &PathBuf) -> eyre::Result<Self> {
         let secret = match read_key_from_disk(key_path) {
             Ok(secret) => secret,
             Err(_) => gen_key_save_to_disk(key_path)?,
@@ -58,7 +58,7 @@ impl KeySigner {
         })
     }
 
-    pub fn new_from_secret_key(secret_key: &str) -> anyhow::Result<Self> {
+    pub fn new_from_secret_key(secret_key: &str) -> eyre::Result<Self> {
         let secret = hex::decode(secret_key).unwrap();
         let secret_key = SecretKey::from_bytes(secret.as_slice().into())?;
         let signing_key = SigningKey::from(secret_key.clone());
@@ -74,7 +74,7 @@ impl KeySigner {
     }
 
     /// Signs the provided hash.
-    pub fn sign_hash(&self, hash: H256) -> anyhow::Result<EthSignature> {
+    pub fn sign_hash(&self, hash: H256) -> eyre::Result<EthSignature> {
         let signing_key = &self.signing_key as &dyn PrehashSigner<(Signature, RecoveryId)>;
         let (recoverable_sig, recovery_id) = signing_key.sign_prehash(hash.as_ref())?;
 
@@ -82,13 +82,15 @@ impl KeySigner {
 
         let r_bytes: FieldBytes<Secp256k1> = recoverable_sig.r().into();
         let s_bytes: FieldBytes<Secp256k1> = recoverable_sig.s().into();
+        #[allow(deprecated)]
         let r = U256::from_big_endian(r_bytes.as_slice());
+        #[allow(deprecated)]
         let s = U256::from_big_endian(s_bytes.as_slice());
 
         Ok(EthSignature { r, s, v })
     }
 
-    pub fn sign_buffer<T>(&self, buffer: &T) -> anyhow::Result<String>
+    pub fn sign_buffer<T>(&self, buffer: &T) -> eyre::Result<String>
     where
         T: AsRef<[u8]>,
     {

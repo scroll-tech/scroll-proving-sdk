@@ -17,7 +17,7 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn new(cfg: CoordinatorConfig) -> anyhow::Result<Self> {
+    pub fn new(cfg: CoordinatorConfig) -> eyre::Result<Self> {
         let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
             .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
@@ -34,8 +34,8 @@ impl Api {
         })
     }
 
-    fn build_url(&self, method: &str) -> anyhow::Result<Url> {
-        self.base_url.join(method).map_err(|e| anyhow::anyhow!(e))
+    fn build_url(&self, method: &str) -> eyre::Result<Url> {
+        self.base_url.join(method).map_err(|e| eyre::eyre!(e))
     }
 
     #[instrument(target = "coordinator_client", skip(self, req, token), level = Level::DEBUG)]
@@ -44,7 +44,7 @@ impl Api {
         method: &str,
         req: &Req,
         token: &String,
-    ) -> anyhow::Result<Resp>
+    ) -> eyre::Result<Resp>
     where
         Req: ?Sized + Serialize,
         Resp: serde::de::DeserializeOwned,
@@ -66,7 +66,7 @@ impl Api {
             .await?;
 
         if response.status() != http::status::StatusCode::OK {
-            anyhow::bail!(
+            eyre::bail!(
                 "[coordinator client], {method}, status not ok: {}",
                 response.status()
             )
@@ -76,10 +76,10 @@ impl Api {
 
         info!("received response");
         trace!(response_body = %response_body);
-        serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
+        serde_json::from_str(&response_body).map_err(|e| eyre::eyre!(e))
     }
 
-    pub async fn challenge(&self) -> anyhow::Result<Response<ChallengeResponseData>> {
+    pub async fn challenge(&self) -> eyre::Result<Response<ChallengeResponseData>> {
         let method = "/coordinator/v1/challenge";
         let url = self.build_url(method)?;
 
@@ -93,14 +93,14 @@ impl Api {
 
         let response_body = response.text().await?;
 
-        serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
+        serde_json::from_str(&response_body).map_err(|e| eyre::eyre!(e))
     }
 
     pub async fn login(
         &self,
         req: &LoginRequest,
         token: &String,
-    ) -> anyhow::Result<Response<LoginResponseData>> {
+    ) -> eyre::Result<Response<LoginResponseData>> {
         let method = "/coordinator/v1/login";
         self.post_with_token(method, req, token).await
     }
@@ -109,7 +109,7 @@ impl Api {
         &self,
         req: &GetTaskRequest,
         token: &String,
-    ) -> anyhow::Result<Response<GetTaskResponseData>> {
+    ) -> eyre::Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
         if self.send_timeout < Duration::from_secs(600) {
             tracing::warn!(
@@ -125,7 +125,7 @@ impl Api {
         &self,
         req: &SubmitProofRequest,
         token: &String,
-    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
+    ) -> eyre::Result<Response<SubmitProofResponseData>> {
         let method = "/coordinator/v1/submit_proof";
         self.post_with_token(method, req, token).await
     }

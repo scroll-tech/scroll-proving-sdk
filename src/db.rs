@@ -7,7 +7,7 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn new(path: &str) -> anyhow::Result<Self> {
+    pub fn new(path: &str) -> eyre::Result<Self> {
         let db = DB::open_default(path)?;
         Ok(Self { db })
     }

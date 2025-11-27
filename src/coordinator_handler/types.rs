@@ -252,7 +252,7 @@ mod tests {
         let buffer = rlp::encode(&login_message);
         let signature = key_signer
             .sign_buffer(&buffer)
-            .map_err(|e| anyhow::anyhow!("Failed to sign the login message: {e}"))
+            .map_err(|e| eyre::eyre!("Failed to sign the login message: {e}"))
             .unwrap();
 
         // expected signature from coordinator's TestGenerateSignature

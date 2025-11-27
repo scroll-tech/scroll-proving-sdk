@@ -23,7 +23,7 @@ impl CoordinatorClient {
         prover_name: String,
         prover_provider_type: ProverProviderType,
         key_signer: KeySigner,
-    ) -> anyhow::Result<Self> {
+    ) -> eyre::Result<Self> {
         let api = Api::new(cfg)?;
         let client = Self {
             prover_types,
@@ -40,7 +40,7 @@ impl CoordinatorClient {
     pub async fn get_task(
         &self,
         req: &GetTaskRequest,
-    ) -> anyhow::Result<Response<GetTaskResponseData>> {
+    ) -> eyre::Result<Response<GetTaskResponseData>> {
         let token = self.get_token(false).await?;
         let response = self.api.get_task(req, &token).await?;
 
@@ -55,7 +55,7 @@ impl CoordinatorClient {
     pub async fn submit_proof(
         &self,
         req: &SubmitProofRequest,
-    ) -> anyhow::Result<Response<SubmitProofResponseData>> {
+    ) -> eyre::Result<Response<SubmitProofResponseData>> {
         let token = self.get_token(false).await?;
         let response = self.api.submit_proof(req, &token).await?;
 
@@ -73,7 +73,7 @@ impl CoordinatorClient {
     ///
     /// If the token is expired, `force_relogin` is set to `true`, or a login was never performed
     /// before, it will authenticate and fetch a new token.
-    pub async fn get_token(&self, force_relogin: bool) -> anyhow::Result<String> {
+    pub async fn get_token(&self, force_relogin: bool) -> eyre::Result<String> {
         let token_guard = self.token.lock().await;
 
         match *token_guard {
@@ -87,15 +87,15 @@ impl CoordinatorClient {
     async fn login(
         &self,
         mut token_guard: MutexGuard<'_, Option<String>>,
-    ) -> anyhow::Result<String> {
+    ) -> eyre::Result<String> {
         let challenge_response = self
             .api
             .challenge()
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to request a challenge: {e}"))?;
+            .map_err(|e| eyre::eyre!("Failed to request a challenge: {e}"))?;
 
         if challenge_response.errcode != ErrorCode::Success {
-            anyhow::bail!(
+            eyre::bail!(
                 "Challenge request failed with {:?} {}",
                 challenge_response.errcode,
                 challenge_response.errmsg
@@ -105,7 +105,7 @@ impl CoordinatorClient {
         let login_response_data = challenge_response
             .data
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Missing challenge token"))?;
+            .ok_or_else(|| eyre::eyre!("Missing challenge token"))?;
 
         let login_message = LoginMessage {
             challenge: login_response_data.token.clone(),
@@ -120,7 +120,7 @@ impl CoordinatorClient {
         let signature = self
             .key_signer
             .sign_buffer(&buffer)
-            .map_err(|e| anyhow::anyhow!("Failed to sign the login message: {e}"))?;
+            .map_err(|e| eyre::eyre!("Failed to sign the login message: {e}"))?;
 
         let login_request = LoginRequest {
             message: login_message,
@@ -131,10 +131,10 @@ impl CoordinatorClient {
             .api
             .login(&login_request, &login_response_data.token)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to login: {e}"))?;
+            .map_err(|e| eyre::eyre!("Failed to login: {e}"))?;
 
         if login_response.errcode != ErrorCode::Success {
-            anyhow::bail!(
+            eyre::bail!(
                 "Login request failed with {:?} {}",
                 login_response.errcode,
                 login_response.errmsg
@@ -143,7 +143,7 @@ impl CoordinatorClient {
         let token = login_response
             .data
             .map(|r| r.token)
-            .ok_or_else(|| anyhow::anyhow!("Empty data in response, lack of login"))?;
+            .ok_or_else(|| eyre::eyre!("Empty data in response, lack of login"))?;
 
         *token_guard = Some(token.clone());
 

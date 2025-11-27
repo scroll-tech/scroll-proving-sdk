@@ -1,6 +1,6 @@
 use crate::{coordinator_handler::ProverType, prover::ProofType};
-use anyhow::{anyhow, Result};
-use dotenv::dotenv;
+use eyre::{eyre, Result};
+use dotenvy::dotenv;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -47,7 +47,7 @@ impl Config {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| eyre!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -65,7 +65,7 @@ impl Config {
         std::env::var_os(key)
             .map(|val| {
                 val.to_str()
-                    .ok_or_else(|| anyhow!("{key} env var is not valid UTF-8"))
+                    .ok_or_else(|| eyre!("{key} env var is not valid UTF-8"))
                     .map(String::from)
             })
             .transpose()

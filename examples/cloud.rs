@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Result};
+#![allow(dead_code)]
+use eyre::{eyre, Result};
 use async_trait::async_trait;
 use clap::Parser;
 use reqwest::Url;
@@ -37,7 +38,7 @@ impl CloudProverConfig {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| eyre!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -49,7 +50,7 @@ impl CloudProverConfig {
         std::env::var_os(key)
             .map(|val| {
                 val.to_str()
-                    .ok_or_else(|| anyhow!("{key} env var is not valid UTF-8"))
+                    .ok_or_else(|| eyre!("{key} env var is not valid UTF-8"))
                     .map(String::from)
             })
             .transpose()
@@ -80,13 +81,13 @@ impl ProvingService for CloudProver {
     fn is_local(&self) -> bool {
         false
     }
-    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vks(&self, _req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&mut self, _req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&mut self, _req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
@@ -101,8 +102,8 @@ impl CloudProver {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
     init_tracing();
 
     let args = Args::parse();
