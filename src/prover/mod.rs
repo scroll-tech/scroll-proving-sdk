@@ -278,6 +278,9 @@ where
         let coordinator_task_uuid = &coordinator_task.uuid;
         let coordinator_task_id = &coordinator_task.task_id;
 
+        // Track last observed status to avoid spamming logs when status hasn't changed.
+        let mut last_status: Option<TaskStatus> = None;
+
         loop {
             let task = self
                 .proving_service
@@ -288,17 +291,22 @@ where
                 })
                 .await;
 
-            match task.status {
+            let current_status = task.status; // capture for comparison
+
+            match current_status {
                 TaskStatus::Queued | TaskStatus::Proving => {
-                    info!(
-                        ?prover_name,
-                        ?task_type,
-                        ?coordinator_task_uuid,
-                        ?coordinator_task_id,
-                        ?proving_service_task_id,
-                        status = ?task.status,
-                        "Task status update"
-                    );
+                    if last_status != Some(current_status) {
+                        info!(
+                            ?prover_name,
+                            ?task_type,
+                            ?coordinator_task_uuid,
+                            ?coordinator_task_id,
+                            ?proving_service_task_id,
+                            status = ?current_status,
+                            "Task status update"
+                        );
+                    }
+                    last_status.replace(current_status);
                     if let Some(db) = &self.db {
                         db.set_task(
                             public_key.clone(),
