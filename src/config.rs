@@ -1,6 +1,6 @@
 use crate::{coordinator_handler::ProverType, prover::ProofType};
-use eyre::{eyre, Result};
 use dotenvy::dotenv;
+use eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -30,6 +30,10 @@ pub struct ProverConfig {
     pub circuit_version: String,
     #[serde(default = "default_n_workers")]
     pub n_workers: usize,
+    #[serde(default = "default_poll_interval_sec")]
+    pub poll_interval_sec: u64,
+    #[serde(default)]
+    pub suppress_empty_task_error: bool,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
@@ -38,8 +42,12 @@ fn default_health_listener_addr() -> String {
     "0.0.0.0:80".to_string()
 }
 
-fn default_n_workers() -> usize {
+const fn default_n_workers() -> usize {
     1
+}
+
+const fn default_poll_interval_sec() -> u64 {
+    20
 }
 
 impl Config {
@@ -108,6 +116,14 @@ impl Config {
 
         if let Some(val) = Self::get_env_var("DB_PATH")? {
             self.db_path = Option::from(val);
+        }
+
+        if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {
+            self.prover.poll_interval_sec = val.parse()?;
+        }
+
+        if Self::get_env_var("SUPPRESS_EMPTY_TASK_ERR")?.is_some() {
+            self.prover.suppress_empty_task_error = true;
         }
 
         Ok(())

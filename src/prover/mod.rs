@@ -2,7 +2,6 @@ pub mod builder;
 pub mod proving_service;
 pub mod types;
 
-use std::future::IntoFuture;
 use crate::{
     coordinator_handler::{
         CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
@@ -12,17 +11,16 @@ use crate::{
 };
 use axum::{routing::get, Router};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use tokio::net::TcpListener;
 use tokio::time::{sleep, Duration};
 use tokio::{sync::RwLock, task::JoinSet};
-use tokio::net::TcpListener;
 use tracing::Level;
 use tracing::{error, info, instrument};
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
-
-const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     proof_types: Vec<ProofType>,
@@ -32,6 +30,8 @@ pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     n_workers: usize,
     health_listener_addr: String,
     db: Option<Db>,
+    poll_interval_sec: u64,
+    suppress_empty_task_error: bool,
 }
 
 impl<Backend> Prover<Backend>
@@ -133,18 +133,15 @@ where
     async fn working_loop(&self, i: usize) {
         loop {
             let coordinator_client = &self.coordinator_clients[i];
-            let prover_name = &coordinator_client.prover_name;
-
-            info!(?prover_name, "Getting task from coordinator");
-
             if let Err(e) = self.handle_task(coordinator_client, None).await {
-                error!(prover_name, error = e.to_string(), "Error handling task");
+                error!(prover_name = %coordinator_client.prover_name, error = e.to_string(), "Error handling task");
             }
 
-            sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
+            sleep(Duration::from_secs(self.poll_interval_sec)).await;
         }
     }
 
+    #[instrument(skip(self, coordinator_client), level = Level::DEBUG)]
     async fn handle_task(
         &self,
         coordinator_client: &CoordinatorClient,
@@ -174,9 +171,13 @@ where
             get_task_request.task_types = vec![t];
             get_task_request.task_id.replace(s.to_string());
         }
-        let coordinator_task = self
+        let Some(coordinator_task) = self
             .get_coordinator_task(coordinator_client, &get_task_request)
-            .await?;
+            .await?
+        else {
+            return Ok(());
+        };
+        info!(prover_name = %coordinator_client.prover_name, "Got task from coordinator");
         let proving_task = self
             .request_proving(coordinator_client, &coordinator_task)
             .await?;
@@ -188,8 +189,14 @@ where
         &self,
         coordinator_client: &CoordinatorClient,
         request: &GetTaskRequest,
-    ) -> eyre::Result<GetTaskResponseData> {
+    ) -> eyre::Result<Option<GetTaskResponseData>> {
         let coordinator_task = coordinator_client.get_task(request).await?;
+
+        if coordinator_task.errcode == ErrorCode::ErrCoordinatorEmptyProofData
+            && self.suppress_empty_task_error
+        {
+            return Ok(None);
+        }
 
         if coordinator_task.errcode != ErrorCode::Success {
             eyre::bail!(
@@ -199,9 +206,7 @@ where
             );
         }
 
-        coordinator_task
-            .data
-            .ok_or_else(|| eyre::eyre!("No task available"))
+        Ok(coordinator_task.data)
     }
 
     async fn request_proving(
@@ -297,7 +302,7 @@ where
                             proving_service_task_id.clone(),
                         );
                     }
-                    sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
+                    sleep(Duration::from_secs(self.poll_interval_sec)).await;
                 }
                 TaskStatus::Success => {
                     info!(
