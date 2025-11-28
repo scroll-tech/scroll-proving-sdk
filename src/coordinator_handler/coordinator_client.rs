@@ -1,6 +1,6 @@
 use super::{
-    GetTaskRequest, GetTaskResponseData, KeySigner, LoginMessage, LoginRequest, ProverType,
-    Response, SubmitProofRequest, SubmitProofResponseData, api::Api,
+    GetTaskRequest, GetTaskResponse, KeySigner, LoginMessage, LoginRequest, ProverType,
+    SubmitProofRequest, api::Api,
 };
 use crate::{config::CoordinatorConfig, prover::ProverProviderType, utils::VERSION};
 use std::borrow::Cow;
@@ -44,14 +44,14 @@ impl CoordinatorClient {
     }
     pub async fn token(&self) -> eyre::Result<Arc<str>> {
         let mutex = self.get_lazy_init_mutex().await?;
-        let guard = mutex.lock().unwrap_or_else(|e| e.into_inner()); // handle poisoned lock
+        let guard = mutex.lock().unwrap_or_else(|e| e.into_inner()); // ignore poisoned lock
         Ok(guard.clone())
     }
 
     pub async fn get_task(
         &self,
         req: &GetTaskRequest<'_>,
-    ) -> eyre::Result<Option<GetTaskResponseData>> {
+    ) -> eyre::Result<Option<GetTaskResponse>> {
         let response = self.api.get_task(req, &self.token().await?).await?;
 
         let response = if response.is_jwt_token_expired() {
@@ -67,18 +67,16 @@ impl CoordinatorClient {
         Ok(Some(response.into_result()?))
     }
 
-    pub async fn submit_proof(
-        &self,
-        req: &SubmitProofRequest<'_>,
-    ) -> eyre::Result<Response<SubmitProofResponseData>> {
+    pub async fn submit_proof(&self, req: &SubmitProofRequest<'_>) -> eyre::Result<()> {
         let response = self.api.submit_proof(req, &self.token().await?).await?;
 
         if response.is_jwt_token_expired() {
             let token = self.refresh_token().await?;
-            self.api.submit_proof(req, &token).await
+            self.api.submit_proof(req, &token).await?.into_result()?;
         } else {
-            Ok(response)
+            response.into_result()?;
         }
+        Ok(())
     }
 
     /// Refresh the jwt token for authentication.
@@ -94,7 +92,7 @@ impl CoordinatorClient {
             &self.key_signer,
         )
         .await?;
-        let mut guard = mutex.lock().unwrap_or_else(|e| e.into_inner()); // handle poisoned lock
+        let mut guard = mutex.lock().unwrap_or_else(|e| e.into_inner()); // ignore poisoned lock
         *guard = token.clone();
 
         Ok(token)

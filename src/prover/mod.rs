@@ -4,7 +4,7 @@ pub mod types;
 
 use crate::{
     coordinator_handler::{
-        CoordinatorClient, GetTaskRequest, GetTaskResponseData, ProofFailureType, ProofStatus,
+        CoordinatorClient, GetTaskRequest, GetTaskResponse, ProofFailureType, ProofStatus,
         SubmitProofRequest,
     },
     db::Db,
@@ -199,7 +199,7 @@ where
     async fn request_proving(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
     ) -> eyre::Result<proving_service::ProveResponse> {
         let proving_input = match self.get_proving_input(coordinator_task) {
             Ok(result) => result,
@@ -252,7 +252,7 @@ where
     async fn handle_proving_progress(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
         proving_service_task_id: String,
     ) -> eyre::Result<()> {
         let prover_name = &coordinator_client.prover_name;
@@ -354,7 +354,7 @@ where
     async fn submit_proof(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
         task: proving_service::QueryTaskResponse,
         status: ProofStatus,
         failure_msg: Option<String>,
@@ -370,48 +370,34 @@ where
             failure_msg: failure_msg.map(Into::into),
         };
 
-        let submit_proof_result = match coordinator_client.submit_proof(&submit_proof_req).await {
-            Ok(result) => result,
-            Err(e) => {
+        match coordinator_client.submit_proof(&submit_proof_req).await {
+            Ok(()) => {
                 info!(
                     prover_name = ?coordinator_client.prover_name,
                     ?coordinator_task.task_type,
                     ?coordinator_task.uuid,
                     ?coordinator_task.task_id,
                     ?task.task_id,
-                    error = ?e,
-                    "Failed to submit proof due to a http error"
+                    "Proof submitted successfully"
+                );
+            }
+            Err(e) => {
+                error!(
+                    prover_name = ?coordinator_client.prover_name,
+                    ?coordinator_task.task_type,
+                    ?coordinator_task.uuid,
+                    ?coordinator_task.task_id,
+                    ?task.task_id,
+                    error = %e,
+                    "Failed to submit proof due to coordinator error"
                 );
                 return Ok(());
             }
-        }
-        .into_result();
-
-        if let Err(e) = &submit_proof_result {
-            info!(
-                prover_name = ?coordinator_client.prover_name,
-                ?coordinator_task.task_type,
-                ?coordinator_task.uuid,
-                ?coordinator_task.task_id,
-                ?task.task_id,
-                code = ?e.code(),
-                msg = ?e.msg(),
-                "Failed to submit proof due to coordinator error"
-            );
-        } else {
-            info!(
-                prover_name = ?coordinator_client.prover_name,
-                ?coordinator_task.task_type,
-                ?coordinator_task.uuid,
-                ?coordinator_task.task_id,
-                ?task.task_id,
-                "Proof submitted successfully"
-            );
-        }
+        };
         Ok(())
     }
 
-    fn get_proving_input(&self, task: &GetTaskResponseData) -> eyre::Result<ProveRequest> {
+    fn get_proving_input(&self, task: &GetTaskResponse) -> eyre::Result<ProveRequest> {
         eyre::ensure!(
             self.proof_types.contains(&task.task_type),
             "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",

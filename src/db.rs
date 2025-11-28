@@ -1,4 +1,4 @@
-use crate::coordinator_handler::GetTaskResponseData;
+use crate::coordinator_handler::GetTaskResponse;
 use rocksdb::DB;
 use tracing::Level;
 
@@ -13,7 +13,7 @@ impl Db {
     }
 
     #[instrument(skip(self), level = Level::DEBUG)]
-    pub fn get_task(&self, public_key: String) -> (Option<GetTaskResponseData>, Option<String>) {
+    pub fn get_task(&self, public_key: String) -> (Option<GetTaskResponse>, Option<String>) {
         (
             self.get_coordinator_task_by_public_key(public_key.clone()),
             self.get_proving_task_id_by_public_key(public_key),
@@ -24,7 +24,7 @@ impl Db {
     pub fn set_task(
         &self,
         public_key: String,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
         proving_task_id: String,
     ) {
         self.set_coordinator_task_by_public_key(public_key.clone(), coordinator_task);
@@ -36,10 +36,7 @@ impl Db {
         self.delete_proving_task_id_by_public_key(public_key);
     }
 
-    fn get_coordinator_task_by_public_key(
-        &self,
-        public_key: String,
-    ) -> Option<GetTaskResponseData> {
+    fn get_coordinator_task_by_public_key(&self, public_key: String) -> Option<GetTaskResponse> {
         self.db
             .get(fmt_coordinator_task_key(public_key))
             .ok()?
@@ -57,7 +54,7 @@ impl Db {
     fn set_coordinator_task_by_public_key(
         &self,
         public_key: String,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
     ) {
         let _ = serde_json::to_vec(coordinator_task)
             .map(|bytes| self.db.put(fmt_coordinator_task_key(public_key), bytes));

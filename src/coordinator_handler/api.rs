@@ -1,6 +1,6 @@
 use super::{
-    ChallengeResponseData, GetTaskRequest, GetTaskResponseData, LoginRequest, LoginResponseData,
-    Response, SubmitProofRequest, SubmitProofResponseData,
+    ChallengeResponse, GetTaskRequest, GetTaskResponse, LoginRequest, LoginResponse, Response,
+    SubmitProofRequest,
 };
 use crate::config::CoordinatorConfig;
 use core::time::Duration;
@@ -36,20 +36,16 @@ impl Api {
         })
     }
 
-    pub async fn challenge(&self) -> eyre::Result<ChallengeResponseData> {
+    pub async fn challenge(&self) -> eyre::Result<ChallengeResponse> {
         const PATH: &str = "/coordinator/v1/challenge";
-        let response: Response<ChallengeResponseData> =
+        let response: Response<ChallengeResponse> =
             self.request(Method::GET, PATH, None::<&()>, None).await?;
         response.into_result().context("challenge request failed")
     }
 
-    pub async fn login(
-        &self,
-        req: &LoginRequest<'_>,
-        token: &str,
-    ) -> eyre::Result<LoginResponseData> {
+    pub async fn login(&self, req: &LoginRequest<'_>, token: &str) -> eyre::Result<LoginResponse> {
         const PATH: &str = "/coordinator/v1/login";
-        let response: Response<LoginResponseData> = self
+        let response: Response<LoginResponse> = self
             .request(Method::POST, PATH, Some(req), Some(token))
             .await?;
         response.into_result().context("login failed")
@@ -59,7 +55,7 @@ impl Api {
         &self,
         req: &GetTaskRequest<'_>,
         token: &str,
-    ) -> eyre::Result<Response<GetTaskResponseData>> {
+    ) -> eyre::Result<Response<GetTaskResponse>> {
         const PATH: &str = "/coordinator/v1/get_task";
 
         if self.send_timeout < Duration::from_secs(600) {
@@ -77,7 +73,7 @@ impl Api {
         &self,
         req: &SubmitProofRequest<'_>,
         token: &str,
-    ) -> eyre::Result<Response<SubmitProofResponseData>> {
+    ) -> eyre::Result<Response<()>> {
         const PATH: &str = "/coordinator/v1/submit_proof";
         self.request(Method::POST, PATH, Some(req), Some(token))
             .await

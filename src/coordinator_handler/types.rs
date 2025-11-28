@@ -170,7 +170,7 @@ impl Encodable for ProverTypes<'_> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, RlpEncodable)]
+#[derive(Debug, Clone, Serialize, RlpEncodable)]
 pub struct LoginMessage<'a> {
     pub challenge: Cow<'a, str>,
     pub prover_version: Cow<'a, str>,
@@ -180,7 +180,7 @@ pub struct LoginMessage<'a> {
     pub vks: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LoginRequest<'a> {
     pub message: LoginMessage<'a>,
     pub public_key: Cow<'a, str>,
@@ -188,14 +188,14 @@ pub struct LoginRequest<'a> {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct LoginResponseData {
+pub struct LoginResponse {
     pub time: String,
     pub token: String,
 }
 
-pub type ChallengeResponseData = LoginResponseData;
+pub type ChallengeResponse = LoginResponse;
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize)]
 pub struct GetTaskRequest<'a> {
     pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
@@ -203,8 +203,8 @@ pub struct GetTaskRequest<'a> {
     pub task_id: Option<Cow<'a, str>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct GetTaskResponseData {
+#[derive(Default, Clone, Serialize, Deserialize)]
+pub struct GetTaskResponse {
     pub uuid: String,
     pub task_id: String,
     pub task_type: ProofType,
@@ -212,7 +212,7 @@ pub struct GetTaskResponseData {
     pub hard_fork_name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)] // TODO: Default?
+#[derive(Debug, Clone, Serialize)] // TODO: Default?
 pub struct SubmitProofRequest<'a> {
     pub uuid: Cow<'a, str>,
     pub task_id: Cow<'a, str>,
@@ -223,9 +223,6 @@ pub struct SubmitProofRequest<'a> {
     pub failure_msg: Option<Cow<'a, str>>,
     pub universal: bool,
 }
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct SubmitProofResponseData {}
 
 #[derive(
     Default,
