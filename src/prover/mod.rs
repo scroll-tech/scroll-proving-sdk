@@ -4,19 +4,21 @@ pub mod types;
 
 use crate::{
     coordinator_handler::{
-        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
-        ProofStatus, SubmitProofRequest,
+        CoordinatorClient, GetTaskRequest, GetTaskResponseData, ProofFailureType, ProofStatus,
+        SubmitProofRequest,
     },
     db::Db,
 };
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
+use eyre::Context;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use rand::Rng;
+use std::borrow::Cow;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use rand::Rng;
 use tokio::net::TcpListener;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio::{sync::RwLock, task::JoinSet};
 use tracing::Level;
 use tracing::{error, info, instrument};
@@ -33,7 +35,6 @@ pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     db: Option<Db>,
     poll_interval_sec: u64,
     randomized_delay_sec: u64,
-    suppress_empty_task_error: bool,
 }
 
 impl<Backend> Prover<Backend>
@@ -127,7 +128,7 @@ where
 
     async fn test_coordinator_connection(&self) {
         self.coordinator_clients[0]
-            .get_token(true)
+            .refresh_token()
             .await
             .expect("Failed to login to coordinator");
     }
@@ -170,14 +171,20 @@ where
                 .await;
         }
 
-        let mut get_task_request = self.build_get_task_request(None)?;
+        let mut get_task_request = GetTaskRequest {
+            task_types: self.proof_types.clone(),
+            prover_height: None,
+            universal: true,
+            task_id: None,
+        };
         if let Some((t, s)) = task_spec {
             get_task_request.task_types = vec![t];
-            get_task_request.task_id.replace(s.to_string());
+            get_task_request.task_id.replace(s.into());
         }
-        let Some(coordinator_task) = self
-            .get_coordinator_task(coordinator_client, &get_task_request)
-            .await?
+        let Some(coordinator_task) = coordinator_client
+            .get_task(&get_task_request)
+            .await
+            .context("failed to get task")?
         else {
             return Ok(());
         };
@@ -187,30 +194,6 @@ where
             .await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
-    }
-
-    async fn get_coordinator_task(
-        &self,
-        coordinator_client: &CoordinatorClient,
-        request: &GetTaskRequest,
-    ) -> eyre::Result<Option<GetTaskResponseData>> {
-        let coordinator_task = coordinator_client.get_task(request).await?;
-
-        if coordinator_task.errcode == ErrorCode::ErrCoordinatorEmptyProofData
-            && self.suppress_empty_task_error
-        {
-            return Ok(None);
-        }
-
-        if coordinator_task.errcode != ErrorCode::Success {
-            eyre::bail!(
-                "Failed to get task, errcode: {:?}, errmsg: {:?}",
-                coordinator_task.errcode,
-                coordinator_task.errmsg
-            );
-        }
-
-        Ok(coordinator_task.data)
     }
 
     async fn request_proving(
@@ -378,13 +361,13 @@ where
     ) -> eyre::Result<()> {
         let submit_proof_req = SubmitProofRequest {
             universal: true,
-            uuid: coordinator_task.uuid.clone(),
-            task_id: coordinator_task.task_id.clone(),
+            uuid: coordinator_task.uuid.as_str().into(),
+            task_id: coordinator_task.task_id.as_str().into(),
             task_type: coordinator_task.task_type,
             status,
-            proof: task.proof.unwrap_or_default(),
+            proof: task.proof.map(Into::into).unwrap_or(Cow::Borrowed("")),
             failure_type: failure_msg.as_ref().map(|_| ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
-            failure_msg,
+            failure_msg: failure_msg.map(Into::into),
         };
 
         let submit_proof_result = match coordinator_client.submit_proof(&submit_proof_req).await {
@@ -401,17 +384,18 @@ where
                 );
                 return Ok(());
             }
-        };
+        }
+        .into_result();
 
-        if submit_proof_result.errcode != ErrorCode::Success {
+        if let Err(e) = &submit_proof_result {
             info!(
                 prover_name = ?coordinator_client.prover_name,
                 ?coordinator_task.task_type,
                 ?coordinator_task.uuid,
                 ?coordinator_task.task_id,
                 ?task.task_id,
-                errcode = ?submit_proof_result.errcode,
-                errmsg = ?submit_proof_result.errmsg,
+                code = ?e.code(),
+                msg = ?e.msg(),
                 "Failed to submit proof due to coordinator error"
             );
         } else {
@@ -425,15 +409,6 @@ where
             );
         }
         Ok(())
-    }
-
-    fn build_get_task_request(&self, prover_height: Option<u64>) -> eyre::Result<GetTaskRequest> {
-        Ok(GetTaskRequest {
-            task_types: self.proof_types.clone(),
-            prover_height,
-            universal: true,
-            task_id: None,
-        })
     }
 
     fn get_proving_input(&self, task: &GetTaskResponseData) -> eyre::Result<ProveRequest> {
@@ -462,56 +437,5 @@ where
         let mut rng = rand::rng();
         let random_delay = rng.random_range(0..self.randomized_delay_sec * 1000);
         base_delay + Duration::from_millis(random_delay)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::config::Config;
-    use crate::prover::{
-        proving_service::{
-            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
-            QueryTaskResponse,
-        },
-        ProverBuilder, ProvingService,
-    };
-    use async_trait::async_trait;
-    use tokio;
-
-    struct MockProver {}
-
-    #[async_trait]
-    impl ProvingService for MockProver {
-        fn is_local(&self) -> bool {
-            true
-        }
-        async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
-            GetVkResponse {
-                ..Default::default()
-            }
-        }
-        async fn prove(&mut self, _: ProveRequest) -> ProveResponse {
-            ProveResponse {
-                ..Default::default()
-            }
-        }
-        async fn query_task(&mut self, _: QueryTaskRequest) -> QueryTaskResponse {
-            QueryTaskResponse {
-                ..Default::default()
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_build_get_task_request() {
-        let cfg = Config::from_file("conf/config.json".to_string()).unwrap();
-        let prover_service = MockProver {};
-        let prover = ProverBuilder::new(cfg, prover_service)
-            .build()
-            .await
-            .unwrap();
-
-        let get_task_request = prover.build_get_task_request(None);
-        assert!(get_task_request.is_ok())
     }
 }

@@ -1,14 +1,14 @@
-use eyre::{eyre, Result};
 use async_trait::async_trait;
 use clap::Parser;
+use eyre::{Result, eyre};
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
+        ProverBuilder, ProvingService,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse,
         },
-        ProverBuilder, ProvingService,
     },
     utils::init_tracing,
 };

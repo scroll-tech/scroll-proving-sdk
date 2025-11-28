@@ -1,22 +1,22 @@
 use serde::{Deserialize, Deserializer};
-use std::fmt;
+use strum::EnumIs;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIs)]
 pub enum ErrorCode {
     Success,
     InternalServerError,
 
-    ErrProverStatsAPIParameterInvalidNo,
-    ErrProverStatsAPIProverTaskFailure,
-    ErrProverStatsAPIProverTotalRewardFailure,
+    ProverStatsAPIParameterInvalidNo,
+    ProverStatsAPIProverTaskFailure,
+    ProverStatsAPIProverTotalRewardFailure,
 
-    ErrCoordinatorParameterInvalidNo,
-    ErrCoordinatorGetTaskFailure,
-    ErrCoordinatorHandleZkProofFailure,
-    ErrCoordinatorEmptyProofData,
+    CoordinatorParameterInvalidNo,
+    CoordinatorGetTaskFailure,
+    CoordinatorHandleZkProofFailure,
+    CoordinatorEmptyProofData,
 
-    ErrJWTCommonErr,
-    ErrJWTTokenExpired,
+    JWTCommonErr,
+    JWTTokenExpired,
 
     Undefined(i32),
 }
@@ -26,15 +26,15 @@ impl ErrorCode {
         match v {
             0 => ErrorCode::Success,
             500 => ErrorCode::InternalServerError,
-            10001 => ErrorCode::ErrProverStatsAPIParameterInvalidNo,
-            10002 => ErrorCode::ErrProverStatsAPIProverTaskFailure,
-            10003 => ErrorCode::ErrProverStatsAPIProverTotalRewardFailure,
-            20001 => ErrorCode::ErrCoordinatorParameterInvalidNo,
-            20002 => ErrorCode::ErrCoordinatorGetTaskFailure,
-            20003 => ErrorCode::ErrCoordinatorHandleZkProofFailure,
-            20004 => ErrorCode::ErrCoordinatorEmptyProofData,
-            50000 => ErrorCode::ErrJWTCommonErr,
-            50001 => ErrorCode::ErrJWTTokenExpired,
+            10001 => ErrorCode::ProverStatsAPIParameterInvalidNo,
+            10002 => ErrorCode::ProverStatsAPIProverTaskFailure,
+            10003 => ErrorCode::ProverStatsAPIProverTotalRewardFailure,
+            20001 => ErrorCode::CoordinatorParameterInvalidNo,
+            20002 => ErrorCode::CoordinatorGetTaskFailure,
+            20003 => ErrorCode::CoordinatorHandleZkProofFailure,
+            20004 => ErrorCode::CoordinatorEmptyProofData,
+            50000 => ErrorCode::JWTCommonErr,
+            50001 => ErrorCode::JWTTokenExpired,
             _ => {
                 error!("get unexpected error code from coordinator: {v}");
                 ErrorCode::Undefined(v)
@@ -50,16 +50,5 @@ impl<'de> Deserialize<'de> for ErrorCode {
     {
         let v: i32 = i32::deserialize(deserializer)?;
         Ok(ErrorCode::from_i32(v))
-    }
-}
-
-// ====================================================
-
-#[derive(Debug, Clone)]
-pub struct ProofStatusNotOKError;
-
-impl fmt::Display for ProofStatusNotOKError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "proof status not ok")
     }
 }

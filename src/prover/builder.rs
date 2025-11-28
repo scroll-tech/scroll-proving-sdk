@@ -6,8 +6,8 @@ use crate::{
     coordinator_handler::{CoordinatorClient, KeySigner},
     db::Db,
     prover::{
-        proving_service::{GetVkRequest, ProvingService},
         Prover,
+        proving_service::{GetVkRequest, ProvingService},
     },
     utils::format_cloud_prover_name,
 };
@@ -75,6 +75,7 @@ where
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.coordinator_prover_type(),
+                    self.cfg.coordinator.suppress_empty_task_error,
                     get_vk_response.vks.clone(),
                     prover_name,
                     prover_provider_type,
@@ -99,7 +100,6 @@ where
                 .transpose()?,
             poll_interval_sec: self.cfg.prover.poll_interval_sec,
             randomized_delay_sec: self.cfg.prover.randomized_delay_sec,
-            suppress_empty_task_error: self.cfg.prover.suppress_empty_task_error,
         })
     }
 }
