@@ -62,6 +62,13 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Response<T> {
         if helper.errcode == ErrorCode::Success {
             if let Some(data) = helper.data {
                 Ok(Response::Ok(data))
+            } else if size_of::<T>() == 0 {
+                // Special handling for zero-sized types, e.g. Reposnse<()>
+                let zst: T = unsafe {
+                    // SAFETY: It's always safe to synthesizing ZST
+                    std::mem::zeroed()
+                };
+                return Ok(Response::Ok(zst));
             } else {
                 Err(serde::de::Error::custom(
                     "Expected data field for successful response",
