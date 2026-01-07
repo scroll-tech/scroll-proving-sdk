@@ -152,10 +152,10 @@ where
         coordinator_client: &CoordinatorClient,
         task_spec: Option<(ProofType, &str)>,
     ) -> eyre::Result<()> {
-        if let (Some(coordinator_task), Some(mut proving_task_id)) = self
+        if let Some((coordinator_task, mut proving_task_id)) = self
             .db
             .as_ref()
-            .map(|db| db.get_task(coordinator_client.key_signer.get_public_key()))
+            .map(|db| db.get_task(&coordinator_client.key_signer.get_public_key()))
             .unwrap_or_default()
         {
             let task_id = coordinator_task.clone().task_id;
@@ -291,11 +291,7 @@ where
                     }
                     last_status.replace(current_status);
                     if let Some(db) = &self.db {
-                        db.set_task(
-                            public_key.clone(),
-                            coordinator_task,
-                            proving_service_task_id.clone(),
-                        );
+                        db.set_task(&public_key, coordinator_task, &proving_service_task_id);
                     }
                     sleep(self.poll_delay()).await;
                 }
@@ -317,7 +313,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(public_key.clone());
+                        db.delete_task(&public_key);
                     }
                     break;
                 }
@@ -341,7 +337,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(public_key.clone());
+                        db.delete_task(&public_key);
                     }
                     break;
                 }
