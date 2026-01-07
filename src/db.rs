@@ -94,12 +94,25 @@ impl Db {
         self.db.write(write_batch)?;
         Ok(())
     }
+
+    /// Expose the inner RocksDB instance for advanced operations.
+    pub fn inner(&self) -> &DB {
+        &self.db
+    }
 }
 
+/// Format keys for storing and retrieving tasks in the database.
+pub static COORDINATOR_TASK_KEY_PREFIX: &str = "last_coordinator_task_";
+
+/// Format keys for storing and retrieving proving task IDs in the database.
+pub static PROVING_TASK_ID_KEY_PREFIX: &str = "last_proving_task_id_";
+
+#[inline]
 pub fn fmt_coordinator_task_key(public_key: &str) -> String {
-    format!("last_coordinator_task_{}", public_key)
+    format!("{COORDINATOR_TASK_KEY_PREFIX}{public_key}")
 }
 
+#[inline]
 pub fn fmt_proving_task_id_key(public_key: &str) -> String {
-    format!("last_proving_task_id_{}", public_key)
+    format!("{PROVING_TASK_ID_KEY_PREFIX}{public_key}")
 }
