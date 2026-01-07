@@ -33,9 +33,6 @@ rocksdb = "0.24"
 strum = { version = "0.27", features = ["derive"] }
 serde_repr = "0.1"
 
-[profile.release]
-debug = 1
-
 # ref: https://docs.rs/color-eyre/0.6.5/color_eyre/#improving-perf-on-debug-builds
 [profile.dev.package.backtrace]
 opt-level = 3
