@@ -3,8 +3,13 @@ name = "scroll-proving-sdk"
 version = "0.2.0"
 edition = "2024"
 
+[[bin]]
+name = "scroll-pover-db-tool"
+path = "src/bin/pover_db_tool.rs"
+
 [dependencies]
 eyre = "0.6"
+color-eyre = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
@@ -27,3 +32,7 @@ dotenvy = "0.15"
 rocksdb = "0.24"
 strum = { version = "0.27", features = ["derive"] }
 serde_repr = "0.1"
+
+# ref: https://docs.rs/color-eyre/0.6.5/color_eyre/#improving-perf-on-debug-builds
+[profile.dev.package.backtrace]
+opt-level = 3

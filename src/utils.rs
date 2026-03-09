@@ -9,6 +9,11 @@ pub static VERSION: &str = concat!(
     env!("ZK_VERSION", "`zkvm-prover` version and commit is required"),
 );
 
+/// Initialize the color_eyre error reporting hook.
+pub fn init_color_eyre_hook() {
+    color_eyre::install().expect("Failed to initialize color_eyre");
+}
+
 pub fn init_tracing() {
     tracing_subscriber::fmt()
         .with_env_filter(
