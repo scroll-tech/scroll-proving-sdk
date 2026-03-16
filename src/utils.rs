@@ -1,21 +1,17 @@
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::format::FmtSpan;
 
-static DEFAULT_COMMIT: &str = "unknown";
-static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+pub static VERSION: &str = concat!(
+    env!("GO_TAG", "semver from `./common/version.go` is required"),
+    "-",
+    env!("GIT_REV", "git rev of `scroll` is required"),
+    "-",
+    env!("ZK_VERSION", "`zkvm-prover` version and commit is required"),
+);
 
-pub const TAG: &str = "v0.0.0";
-pub const DEFAULT_ZK_VERSION: &str = "000000-000000";
-
-fn init_version() -> String {
-    let commit = option_env!("GIT_REV").unwrap_or(DEFAULT_COMMIT);
-    let tag = option_env!("GO_TAG").unwrap_or(TAG);
-    let zk_version = option_env!("ZK_VERSION").unwrap_or(DEFAULT_ZK_VERSION);
-    format!("{tag}-{commit}-{zk_version}")
-}
-
-pub fn get_version() -> String {
-    VERSION.get_or_init(init_version).clone()
+/// Initialize the color_eyre error reporting hook.
+pub fn init_color_eyre_hook() {
+    color_eyre::install().expect("Failed to initialize color_eyre");
 }
 
 pub fn init_tracing() {

@@ -1,6 +1,6 @@
 use crate::{coordinator_handler::ProverType, prover::ProofType};
-use eyre::{eyre, Result};
 use dotenvy::dotenv;
+use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -22,6 +22,8 @@ pub struct CoordinatorConfig {
     pub retry_count: u32,
     pub retry_wait_time_sec: u64,
     pub connection_timeout_sec: u64,
+    #[serde(default)]
+    pub suppress_empty_task_error: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -106,11 +108,12 @@ impl Config {
 
             self.prover.supported_proof_types = values_vec
                 .iter()
-                .map(|value| match value.parse::<u8>() {
-                    Ok(num) => ProofType::from_u8(num),
-                    Err(e) => {
-                        panic!("Failed to parse circuit type: {}", e);
-                    }
+                .map(|value| {
+                    value
+                        .parse::<u8>()
+                        .ok()
+                        .and_then(ProofType::from_repr)
+                        .expect("failed to parse circuit type")
                 })
                 .collect::<Vec<ProofType>>();
         }
@@ -120,7 +123,18 @@ impl Config {
         }
 
         if let Some(val) = Self::get_env_var("DB_PATH")? {
-            self.db_path = Option::from(val);
+            self.db_path = Some(val);
+        }
+
+        if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {
+            self.prover.poll_interval_sec = val.parse()?;
+        }
+        if let Some(val) = Self::get_env_var("RANDOMIZED_DELAY_SEC")? {
+            self.prover.randomized_delay_sec = val.parse()?;
+        }
+
+        if Self::get_env_var("SUPPRESS_EMPTY_TASK_ERR")?.is_some() {
+            self.coordinator.suppress_empty_task_error = true;
         }
 
         if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {

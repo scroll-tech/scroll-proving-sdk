@@ -1,8 +1,8 @@
 use ethers_core::{
     k256::{
-        ecdsa::{signature::hazmat::PrehashSigner, RecoveryId, Signature, SigningKey},
-        elliptic_curve::{sec1::ToEncodedPoint, FieldBytes},
         PublicKey, Secp256k1, SecretKey,
+        ecdsa::{RecoveryId, Signature, SigningKey, signature::hazmat::PrehashSigner},
+        elliptic_curve::{FieldBytes, sec1::ToEncodedPoint},
     },
     types::Signature as EthSignature,
     types::{H256, U256},
