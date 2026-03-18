@@ -5,7 +5,6 @@ use alloy_rlp::{
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_repr::{Deserialize_repr as DeserializeRepr, Serialize_repr as SerializeRepr};
-use std::borrow::Cow;
 use std::fmt;
 use strum::{EnumIs, FromRepr};
 
@@ -68,7 +67,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Response<T> {
                     // SAFETY: It's always safe to synthesizing ZST
                     std::mem::zeroed()
                 };
-                return Ok(Response::Ok(zst));
+                Ok(Response::Ok(zst))
             } else {
                 Err(serde::de::Error::custom(
                     "Expected data field for successful response",
@@ -143,14 +142,8 @@ impl Decodable for ProverType {
 
 /// The ProverType in go side is a type alias of uint8
 /// A uint8 slice is treated as a string when doing the rlp encoding
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProverTypes<'a>(Cow<'a, [ProverType]>);
-
-impl<'a, T: Into<Cow<'a, [ProverType]>>> From<T> for ProverTypes<'a> {
-    fn from(value: T) -> Self {
-        ProverTypes(value.into())
-    }
-}
+#[derive(Debug, Clone, Serialize)]
+pub struct ProverTypes<'a>(pub &'a [ProverType]);
 
 /// See implementation of [`Encodable`] for [u8]
 impl Encodable for ProverTypes<'_> {
@@ -179,19 +172,19 @@ impl Encodable for ProverTypes<'_> {
 
 #[derive(Debug, Clone, Serialize, RlpEncodable)]
 pub struct LoginMessage<'a> {
-    pub challenge: Cow<'a, str>,
-    pub prover_version: Cow<'a, str>,
-    pub prover_name: Cow<'a, str>,
+    pub challenge: &'a str,
+    pub prover_version: &'a str,
+    pub prover_name: &'a str,
     pub prover_provider_type: ProverProviderType,
-    pub prover_types: ProverTypes<'a>,
-    pub vks: Vec<String>,
+    pub prover_types: &'a Vec<ProverType>,
+    pub vks: &'a Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoginRequest<'a> {
     pub message: LoginMessage<'a>,
-    pub public_key: Cow<'a, str>,
-    pub signature: Cow<'a, str>,
+    pub public_key: &'a str,
+    pub signature: &'a str,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -207,7 +200,7 @@ pub struct GetTaskRequest<'a> {
     pub task_types: Vec<ProofType>,
     pub prover_height: Option<u64>,
     pub universal: bool,
-    pub task_id: Option<Cow<'a, str>>,
+    pub task_id: Option<&'a str>,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -221,13 +214,13 @@ pub struct GetTaskResponse {
 
 #[derive(Debug, Clone, Serialize)] // TODO: Default?
 pub struct SubmitProofRequest<'a> {
-    pub uuid: Cow<'a, str>,
-    pub task_id: Cow<'a, str>,
+    pub uuid: &'a str,
+    pub task_id: &'a str,
     pub task_type: ProofType,
     pub status: ProofStatus,
-    pub proof: Cow<'a, str>,
+    pub proof: &'a str,
     pub failure_type: Option<ProofFailureType>,
-    pub failure_msg: Option<Cow<'a, str>>,
+    pub failure_msg: Option<&'a str>,
     pub universal: bool,
 }
 
@@ -292,13 +285,15 @@ mod tests {
         let private_key_hex = "8b8df68fddf7ee2724b79ccbd07799909d59b4dd4f4df3f6ecdc4fb8d56bdf4c";
         let key_signer = KeySigner::new_from_secret_key(private_key_hex).unwrap();
 
+        let prover_types = vec![ProverType::Chunk];
+        let vks = vec!["mock_vk".to_string()];
         let login_message = LoginMessage {
             challenge: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik".into(),
             prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c".into(),
             prover_name: "test".into(),
             prover_provider_type: ProverProviderType::Internal,
-            prover_types: (&[ProverType::Chunk]).into(),
-            vks: vec!["mock_vk".into()],
+            prover_types: &prover_types,
+            vks: &vks,
         };
 
         let buffer = alloy_rlp::encode(&login_message);

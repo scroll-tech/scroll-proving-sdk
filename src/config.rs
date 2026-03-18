@@ -39,8 +39,6 @@ pub struct ProverConfig {
     /// specified time value. Defaults to 0, indicating that no randomized delay shall be applied.
     #[serde(default)]
     pub randomized_delay_sec: u64,
-    #[serde(default)]
-    pub suppress_empty_task_error: bool,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
@@ -142,10 +140,6 @@ impl Config {
         }
         if let Some(val) = Self::get_env_var("RANDOMIZED_DELAY_SEC")? {
             self.prover.randomized_delay_sec = val.parse()?;
-        }
-
-        if Self::get_env_var("SUPPRESS_EMPTY_TASK_ERR")?.is_some() {
-            self.prover.suppress_empty_task_error = true;
         }
 
         Ok(())

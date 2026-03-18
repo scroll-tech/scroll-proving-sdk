@@ -43,71 +43,12 @@ impl Api {
         response.into_result().context("challenge request failed")
     }
 
-    #[instrument(skip(self, req, token), level = Level::DEBUG)]
-    async fn post_with_token<Req, Resp>(
-        &self,
-        method: &str,
-        req: &Req,
-        token: &String,
-    ) -> eyre::Result<Resp>
-    where
-        Req: ?Sized + Serialize,
-        Resp: serde::de::DeserializeOwned,
-    {
-        let url = self.build_url(method)?;
-        let request_body = serde_json::to_string(req)?;
-        let size = request_body.len();
-
-        debug!("sent request");
-        trace!(token = %token, request_body = %request_body, size = %size);
-        let response = self
-            .client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(token)
-            .body(request_body)
-            .timeout(self.send_timeout)
-            .send()
+    pub async fn login(&self, req: &LoginRequest<'_>, token: &str) -> eyre::Result<LoginResponse> {
+        const PATH: &str = "/coordinator/v1/login";
+        let response: Response<LoginResponse> = self
+            .request(Method::POST, PATH, Some(req), Some(token))
             .await?;
-
-        if response.status() != http::status::StatusCode::OK {
-            eyre::bail!(
-                "[coordinator client], {method}, status not ok: {}",
-                response.status()
-            )
-        }
-
-        let response_body = response.text().await?;
-
-        debug!("received response");
-        trace!(response_body = %response_body);
-        serde_json::from_str(&response_body).map_err(|e| eyre::eyre!(e))
-    }
-
-    pub async fn challenge(&self) -> eyre::Result<Response<ChallengeResponseData>> {
-        let method = "/coordinator/v1/challenge";
-        let url = self.build_url(method)?;
-
-        let response = self
-            .client
-            .get(url)
-            .header(CONTENT_TYPE, "application/json")
-            .timeout(self.send_timeout)
-            .send()
-            .await?;
-
-        let response_body = response.text().await?;
-
-        serde_json::from_str(&response_body).map_err(|e| eyre::eyre!(e))
-    }
-
-    pub async fn login(
-        &self,
-        req: &LoginRequest,
-        token: &String,
-    ) -> eyre::Result<Response<LoginResponseData>> {
-        let method = "/coordinator/v1/login";
-        self.post_with_token(method, req, token).await
+        response.into_result().context("login failed")
     }
 
     pub async fn get_task(

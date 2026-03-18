@@ -17,7 +17,8 @@
       2,
       3
     ],
-    "circuit_version": "v0.13.1"
+    "circuit_version": "v0.13.1",
+    "suppress_empty_task_error": true
   },
   "db_path": "db"
 }

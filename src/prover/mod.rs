@@ -10,14 +10,13 @@ use crate::{
     db::Db,
 };
 use axum::{Router, routing::get};
-use eyre::Context;
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use rand::Rng;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use rand::Rng;
 use tokio::net::TcpListener;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 use tokio::{sync::RwLock, task::JoinSet};
 use tracing::Level;
 use tracing::{error, info, instrument};
@@ -34,7 +33,6 @@ pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     db: Option<Db>,
     poll_interval_sec: u64,
     randomized_delay_sec: u64,
-    suppress_empty_task_error: bool,
 }
 
 impl<Backend> Prover<Backend>
@@ -179,12 +177,9 @@ where
         };
         if let Some((t, s)) = task_spec {
             get_task_request.task_types = vec![t];
-            get_task_request.task_id.replace(s.into());
+            get_task_request.task_id.replace(s);
         }
-        let Some(coordinator_task) = self
-            .get_coordinator_task(coordinator_client, &get_task_request)
-            .await?
-        else {
+        let Some(coordinator_task) = coordinator_client.get_task(&get_task_request).await? else {
             return Ok(());
         };
         info!(prover_name = %coordinator_client.prover_name, "Got task from coordinator");
@@ -193,30 +188,6 @@ where
             .await?;
         self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
             .await
-    }
-
-    async fn get_coordinator_task(
-        &self,
-        coordinator_client: &CoordinatorClient,
-        request: &GetTaskRequest,
-    ) -> eyre::Result<Option<GetTaskResponseData>> {
-        let coordinator_task = coordinator_client.get_task(request).await?;
-
-        if coordinator_task.errcode == ErrorCode::ErrCoordinatorEmptyProofData
-            && self.suppress_empty_task_error
-        {
-            return Ok(None);
-        }
-
-        if coordinator_task.errcode != ErrorCode::Success {
-            eyre::bail!(
-                "Failed to get task, errcode: {:?}, errmsg: {:?}",
-                coordinator_task.errcode,
-                coordinator_task.errmsg
-            );
-        }
-
-        Ok(coordinator_task.data)
     }
 
     async fn request_proving(
@@ -314,11 +285,7 @@ where
                     }
                     last_status.replace(current_status);
                     if let Some(db) = &self.db {
-                        db.set_task(
-                            public_key.clone(),
-                            coordinator_task,
-                            proving_service_task_id.clone(),
-                        );
+                        db.set_task(public_key, coordinator_task, &proving_service_task_id);
                     }
                     sleep(self.poll_delay()).await;
                 }
@@ -340,7 +307,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(&public_key);
+                        db.delete_task(public_key);
                     }
                     break;
                 }
@@ -364,7 +331,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(&public_key);
+                        db.delete_task(public_key);
                     }
                     break;
                 }
@@ -384,13 +351,13 @@ where
     ) -> eyre::Result<()> {
         let submit_proof_req = SubmitProofRequest {
             universal: true,
-            uuid: coordinator_task.uuid.as_str().into(),
-            task_id: coordinator_task.task_id.as_str().into(),
+            uuid: coordinator_task.uuid.as_str(),
+            task_id: coordinator_task.task_id.as_str(),
             task_type: coordinator_task.task_type,
             status,
-            proof: task.proof.map(Into::into).unwrap_or(Cow::Borrowed("")),
+            proof: task.proof.as_deref().unwrap_or(""),
             failure_type: failure_msg.as_ref().map(|_| ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
-            failure_msg: failure_msg.map(Into::into),
+            failure_msg: failure_msg.as_deref(),
         };
 
         match coordinator_client.submit_proof(&submit_proof_req).await {
@@ -437,17 +404,6 @@ where
             input: task.task_data.clone(),
         })
     }
-
-    fn poll_delay(&self) -> Duration {
-        let base_delay = Duration::from_secs(self.poll_interval_sec);
-        if self.randomized_delay_sec == 0 {
-            return base_delay;
-        }
-        let mut rng = rand::rng();
-        let random_delay = rng.random_range(0..self.randomized_delay_sec * 1000);
-        base_delay + Duration::from_millis(random_delay)
-    }
-}
 
     fn poll_delay(&self) -> Duration {
         let base_delay = Duration::from_secs(self.poll_interval_sec);
