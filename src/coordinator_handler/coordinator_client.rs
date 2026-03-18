@@ -1,6 +1,6 @@
 use super::{
     GetTaskRequest, GetTaskResponse, KeySigner, LoginMessage, LoginRequest, ProverType,
-    SubmitProofRequest, api::Api,
+    ProverTypes, SubmitProofRequest, api::Api,
 };
 use crate::{config::CoordinatorConfig, prover::ProverProviderType, utils::VERSION};
 use tokio::sync::Mutex;
@@ -88,7 +88,7 @@ impl CoordinatorClient {
                 prover_version: VERSION,
                 prover_name: &self.prover_name,
                 prover_provider_type: self.prover_provider_type,
-                prover_types: &self.prover_types,
+                prover_types: ProverTypes(&self.prover_types),
                 vks: &self.vks,
             };
             let buffer = alloy_rlp::encode(&login_message);

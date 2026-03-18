@@ -176,7 +176,7 @@ pub struct LoginMessage<'a> {
     pub prover_version: &'a str,
     pub prover_name: &'a str,
     pub prover_provider_type: ProverProviderType,
-    pub prover_types: &'a Vec<ProverType>,
+    pub prover_types: ProverTypes<'a>,
     pub vks: &'a Vec<String>,
 }
 
@@ -292,7 +292,7 @@ mod tests {
             prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c".into(),
             prover_name: "test".into(),
             prover_provider_type: ProverProviderType::Internal,
-            prover_types: &prover_types,
+            prover_types: ProverTypes(&prover_types),
             vks: &vks,
         };
 
