@@ -1,6 +1,6 @@
 use crate::{coordinator_handler::ProverType, prover::ProofType};
-use anyhow::{anyhow, Result};
-use dotenv::dotenv;
+use dotenvy::dotenv;
+use eyre::{Result, eyre};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
@@ -22,6 +22,8 @@ pub struct CoordinatorConfig {
     pub retry_count: u32,
     pub retry_wait_time_sec: u64,
     pub connection_timeout_sec: u64,
+    #[serde(default)]
+    pub suppress_empty_task_error: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,6 +32,13 @@ pub struct ProverConfig {
     pub circuit_version: String,
     #[serde(default = "default_n_workers")]
     pub n_workers: usize,
+    /// Interval between polling the coordinator for new tasks.
+    #[serde(default = "default_poll_interval_sec")]
+    pub poll_interval_sec: u64,
+    /// Delay the timer by a randomly selected, evenly distributed amount of time between 0 and the
+    /// specified time value. Defaults to 0, indicating that no randomized delay shall be applied.
+    #[serde(default)]
+    pub randomized_delay_sec: u64,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DbConfig {}
@@ -38,8 +47,12 @@ fn default_health_listener_addr() -> String {
     "0.0.0.0:80".to_string()
 }
 
-fn default_n_workers() -> usize {
+const fn default_n_workers() -> usize {
     1
+}
+
+const fn default_poll_interval_sec() -> u64 {
+    20
 }
 
 impl Config {
@@ -47,7 +60,7 @@ impl Config {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| eyre!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -65,7 +78,7 @@ impl Config {
         std::env::var_os(key)
             .map(|val| {
                 val.to_str()
-                    .ok_or_else(|| anyhow!("{key} env var is not valid UTF-8"))
+                    .ok_or_else(|| eyre!("{key} env var is not valid UTF-8"))
                     .map(String::from)
             })
             .transpose()
@@ -93,11 +106,12 @@ impl Config {
 
             self.prover.supported_proof_types = values_vec
                 .iter()
-                .map(|value| match value.parse::<u8>() {
-                    Ok(num) => ProofType::from_u8(num),
-                    Err(e) => {
-                        panic!("Failed to parse circuit type: {}", e);
-                    }
+                .map(|value| {
+                    value
+                        .parse::<u8>()
+                        .ok()
+                        .and_then(ProofType::from_repr)
+                        .expect("failed to parse circuit type")
                 })
                 .collect::<Vec<ProofType>>();
         }
@@ -107,7 +121,25 @@ impl Config {
         }
 
         if let Some(val) = Self::get_env_var("DB_PATH")? {
-            self.db_path = Option::from(val);
+            self.db_path = Some(val);
+        }
+
+        if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {
+            self.prover.poll_interval_sec = val.parse()?;
+        }
+        if let Some(val) = Self::get_env_var("RANDOMIZED_DELAY_SEC")? {
+            self.prover.randomized_delay_sec = val.parse()?;
+        }
+
+        if Self::get_env_var("SUPPRESS_EMPTY_TASK_ERR")?.is_some() {
+            self.coordinator.suppress_empty_task_error = true;
+        }
+
+        if let Some(val) = Self::get_env_var("POLL_INTERVAL_SEC")? {
+            self.prover.poll_interval_sec = val.parse()?;
+        }
+        if let Some(val) = Self::get_env_var("RANDOMIZED_DELAY_SEC")? {
+            self.prover.randomized_delay_sec = val.parse()?;
         }
 
         Ok(())

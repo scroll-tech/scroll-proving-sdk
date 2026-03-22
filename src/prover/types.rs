@@ -1,91 +1,74 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use alloy_rlp::{BufMut, Decodable, Encodable};
+use serde_repr::{Deserialize_repr as DeserializeRepr, Serialize_repr as SerializeRepr};
+use strum::{Display, EnumIs, FromRepr};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Default,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    SerializeRepr,
+    DeserializeRepr,
+    EnumIs,
+    Display,
+    FromRepr,
+)]
 #[repr(u8)]
 pub enum ProverProviderType {
     #[default]
-    Undefined,
-    Internal,
-    External,
+    Undefined = 0,
+    Internal = 1,
+    External = 2,
 }
 
-impl ProverProviderType {
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            1 => ProverProviderType::Internal,
-            2 => ProverProviderType::External,
-            _ => ProverProviderType::Undefined,
-        }
+impl Encodable for ProverProviderType {
+    fn encode(&self, out: &mut dyn BufMut) {
+        (*self as u8).encode(out);
     }
 }
 
-impl Serialize for ProverProviderType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            ProverProviderType::Undefined => serializer.serialize_u8(0),
-            ProverProviderType::Internal => serializer.serialize_u8(1),
-            ProverProviderType::External => serializer.serialize_u8(2),
-        }
+impl Decodable for ProverProviderType {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let v = u8::decode(buf)?;
+        Ok(ProverProviderType::from_repr(v).unwrap_or(ProverProviderType::Undefined))
     }
 }
 
-impl<'de> Deserialize<'de> for ProverProviderType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v: u8 = u8::deserialize(deserializer)?;
-        Ok(ProverProviderType::from_u8(v))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Default,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    SerializeRepr,
+    DeserializeRepr,
+    EnumIs,
+    Display,
+    FromRepr,
+)]
+#[repr(u8)]
 pub enum ProofType {
     #[default]
-    Undefined,
-    Chunk,
-    Batch,
-    Bundle,
+    Undefined = 0,
+    Chunk = 1,
+    Batch = 2,
+    Bundle = 3,
 }
 
-impl ProofType {
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            1 => ProofType::Chunk,
-            2 => ProofType::Batch,
-            3 => ProofType::Bundle,
-            _ => ProofType::Undefined,
-        }
-    }
-
-    pub fn to_u8(self) -> u8 {
-        match self {
-            ProofType::Undefined => 0,
-            ProofType::Chunk => 1,
-            ProofType::Batch => 2,
-            ProofType::Bundle => 3,
-        }
+impl Encodable for ProofType {
+    fn encode(&self, out: &mut dyn BufMut) {
+        (*self as u8).encode(out);
     }
 }
 
-impl Serialize for ProofType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u8(self.to_u8())
-    }
-}
-
-impl<'de> Deserialize<'de> for ProofType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v: u8 = u8::deserialize(deserializer)?;
-        Ok(ProofType::from_u8(v))
+impl Decodable for ProofType {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let v = u8::decode(buf)?;
+        Ok(ProofType::from_repr(v).unwrap_or(ProofType::Undefined))
     }
 }

@@ -6,8 +6,8 @@ use crate::{
     coordinator_handler::{CoordinatorClient, KeySigner},
     db::Db,
     prover::{
-        proving_service::{GetVkRequest, ProvingService},
         Prover,
+        proving_service::{GetVkRequest, ProvingService},
     },
     utils::format_cloud_prover_name,
 };
@@ -29,9 +29,9 @@ where
         }
     }
 
-    pub async fn build(self) -> anyhow::Result<Prover<Backend>> {
+    pub async fn build(self) -> eyre::Result<Prover<Backend>> {
         if self.proving_service.is_local() && self.cfg.prover.n_workers > 1 {
-            anyhow::bail!("cannot use multiple workers with local proving service");
+            eyre::bail!("cannot use multiple workers with local proving service");
         }
 
         let get_vk_request = GetVkRequest {
@@ -40,21 +40,18 @@ where
         };
         let get_vk_response = self.proving_service.get_vks(get_vk_request).await;
         if let Some(error) = get_vk_response.error {
-            anyhow::bail!("failed to get vk: {}", error);
+            eyre::bail!("failed to get vk: {}", error);
         }
 
-        let prover_provider_type = if self.proving_service.is_local() {
-            ProverProviderType::Internal
-        } else {
-            ProverProviderType::External
-        };
+        // FIXME: should derive from `self.proving_service.is_local()`, but coordinator has a bug when handling external provers
+        let prover_provider_type = ProverProviderType::Internal;
 
         let key_signers: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
                 let keys_dir = PathBuf::from(&self.cfg.keys_dir);
                 if !keys_dir.exists() {
                     std::fs::create_dir_all(&keys_dir).map_err(|e| {
-                        anyhow::anyhow!(
+                        eyre::eyre!(
                             "failed to create keys directory {}: {e}",
                             keys_dir.display()
                         )
@@ -65,7 +62,7 @@ where
             })
             .collect();
         let key_signers =
-            key_signers.map_err(|e| anyhow::anyhow!("cannot create key_signer, err: {e}"))?;
+            key_signers.map_err(|e| eyre::eyre!("cannot create key_signer, err: {e}"))?;
 
         let coordinator_clients: Result<Vec<_>, _> = (0..self.cfg.prover.n_workers)
             .map(|i| {
@@ -78,6 +75,7 @@ where
                 CoordinatorClient::new(
                     self.cfg.coordinator.clone(),
                     self.cfg.coordinator_prover_type(),
+                    self.cfg.coordinator.suppress_empty_task_error,
                     get_vk_response.vks.clone(),
                     prover_name,
                     prover_provider_type,
@@ -100,6 +98,8 @@ where
                 .as_ref()
                 .map(|path| Db::new(path.as_str()))
                 .transpose()?,
+            poll_interval_sec: self.cfg.prover.poll_interval_sec,
+            randomized_delay_sec: self.cfg.prover.randomized_delay_sec,
         })
     }
 }

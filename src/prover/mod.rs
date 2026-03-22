@@ -1,25 +1,27 @@
 pub mod builder;
 pub mod proving_service;
 pub mod types;
+
 use crate::{
     coordinator_handler::{
-        CoordinatorClient, ErrorCode, GetTaskRequest, GetTaskResponseData, ProofFailureType,
-        ProofStatus, SubmitProofRequest,
+        CoordinatorClient, GetTaskRequest, GetTaskResponse, ProofFailureType, ProofStatus,
+        SubmitProofRequest,
     },
     db::Db,
 };
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use proving_service::{ProveRequest, QueryTaskRequest, TaskStatus};
+use rand::Rng;
+use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::thread;
-use tokio::time::{sleep, Duration};
+use tokio::net::TcpListener;
+use tokio::time::{Duration, sleep};
 use tokio::{sync::RwLock, task::JoinSet};
+use tracing::Level;
 use tracing::{error, info, instrument};
 
 pub use {builder::ProverBuilder, proving_service::ProvingService, types::*};
-
-const WORKER_SLEEP_SEC: u64 = 20;
 
 pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     proof_types: Vec<ProofType>,
@@ -29,6 +31,8 @@ pub struct Prover<Backend: ProvingService + Send + Sync + 'static> {
     n_workers: usize,
     health_listener_addr: String,
     db: Option<Db>,
+    poll_interval_sec: u64,
+    randomized_delay_sec: u64,
 }
 
 impl<Backend> Prover<Backend>
@@ -36,14 +40,17 @@ where
     Backend: ProvingService + Send + Sync + 'static,
 {
     pub async fn run(self) {
-        assert!(self.n_workers == self.coordinator_clients.len());
+        assert_eq!(self.n_workers, self.coordinator_clients.len());
 
         self.test_coordinator_connection().await;
 
         let app = Router::new().route("/", get(|| async { "OK" }));
         let addr = SocketAddr::from_str(&self.health_listener_addr)
             .expect("Failed to parse socket address");
-        let server = axum::Server::bind(&addr).serve(app.into_make_service());
+        let listener = TcpListener::bind(addr)
+            .await
+            .expect("Failed to bind health check listener");
+        let server = axum::serve(listener, app).into_future();
         let health_check_server_task = tokio::spawn(server);
 
         let mut provers = JoinSet::new();
@@ -53,7 +60,6 @@ where
             provers.spawn(async move {
                 self_clone.working_loop(i).await;
             });
-            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
         }
 
         tokio::select! {
@@ -67,7 +73,7 @@ where
         tasks: &[String],
         task_type: ProofType,
     ) -> bool {
-        assert!(self.n_workers == self.coordinator_clients.len());
+        assert_eq!(self.n_workers, self.coordinator_clients.len());
 
         self.test_coordinator_connection().await;
 
@@ -88,6 +94,9 @@ where
             let task_str = task.to_string();
             let i = work_set.pop().expect("can not be empty");
             provers.spawn(async move {
+                // Soft start delay to stagger the provers
+                sleep(self_clone.poll_delay()).await;
+
                 let coordinator_client = &self_clone.coordinator_clients[i];
                 let prover_name = &coordinator_client.prover_name;
 
@@ -97,55 +106,58 @@ where
                     .handle_task(coordinator_client, Some((task_type, task_str.as_str())))
                     .await
                 {
-                    error!(?prover_name, ?e, "Error handling task");
+                    error!(prover_name, error = e.to_string(), "Error handling task");
                     panic!("task fail");
                 }
                 i
             });
-            thread::sleep(Duration::from_secs(3)); // Sleep for 3 seconds to avoid overwhelming the l2geth/coordinator with requests.
         }
 
         // wait until all tasks has been done
-        while provers.join_next().await.is_some() {}
+        while let Some(r) = provers.join_next().await {
+            let Ok(r) = r else {
+                // quit since one task has failed
+                return false;
+            };
+            info!("worker {r} has completed");
+        }
         true
     }
 
     async fn test_coordinator_connection(&self) {
         self.coordinator_clients[0]
-            .get_token(true)
+            .refresh_token()
             .await
             .expect("Failed to login to coordinator");
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), level = Level::DEBUG)]
     async fn working_loop(&self, i: usize) {
+        // Soft start delay to stagger the provers
+        sleep(self.poll_delay()).await;
         loop {
             let coordinator_client = &self.coordinator_clients[i];
-            let prover_name = &coordinator_client.prover_name;
-
-            info!(?prover_name, "Getting task from coordinator");
-
             if let Err(e) = self.handle_task(coordinator_client, None).await {
-                error!(?prover_name, ?e, "Error handling task");
+                error!(prover_name = %coordinator_client.prover_name, error = e.to_string(), "Error handling task");
             }
-
-            sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
+            sleep(self.poll_delay()).await;
         }
     }
 
+    #[instrument(skip(self, coordinator_client), level = Level::DEBUG)]
     async fn handle_task(
         &self,
         coordinator_client: &CoordinatorClient,
         task_spec: Option<(ProofType, &str)>,
-    ) -> anyhow::Result<()> {
-        if let (Some(coordinator_task), Some(mut proving_task_id)) = self
+    ) -> eyre::Result<()> {
+        if let Some((coordinator_task, mut proving_task_id)) = self
             .db
             .as_ref()
-            .map(|db| db.get_task(coordinator_client.key_signer.get_public_key()))
+            .map(|db| db.get_task(&coordinator_client.key_signer.get_public_key()))
             .unwrap_or_default()
         {
             let task_id = coordinator_task.clone().task_id;
-            log::debug!("got previous task from db, task_id: {task_id}");
+            debug!(task_id = %task_id, "got previous task from db");
             if self.proving_service.read().await.is_local() {
                 let proving_task = self
                     .request_proving(coordinator_client, &coordinator_task)
@@ -157,14 +169,20 @@ where
                 .await;
         }
 
-        let mut get_task_request = self.build_get_task_request(None)?;
+        let mut get_task_request = GetTaskRequest {
+            task_types: self.proof_types.clone(),
+            prover_height: None,
+            universal: true,
+            task_id: None,
+        };
         if let Some((t, s)) = task_spec {
             get_task_request.task_types = vec![t];
-            get_task_request.task_id.replace(s.to_string());
+            get_task_request.task_id.replace(s);
         }
-        let coordinator_task = self
-            .get_coordinator_task(coordinator_client, &get_task_request)
-            .await?;
+        let Some(coordinator_task) = coordinator_client.get_task(&get_task_request).await? else {
+            return Ok(());
+        };
+        info!(prover_name = %coordinator_client.prover_name, "Got task from coordinator");
         let proving_task = self
             .request_proving(coordinator_client, &coordinator_task)
             .await?;
@@ -172,31 +190,11 @@ where
             .await
     }
 
-    async fn get_coordinator_task(
-        &self,
-        coordinator_client: &CoordinatorClient,
-        request: &GetTaskRequest,
-    ) -> anyhow::Result<GetTaskResponseData> {
-        let coordinator_task = coordinator_client.get_task(request).await?;
-
-        if coordinator_task.errcode != ErrorCode::Success {
-            anyhow::bail!(
-                "Failed to get task, errcode: {:?}, errmsg: {:?}",
-                coordinator_task.errcode,
-                coordinator_task.errmsg
-            );
-        }
-
-        coordinator_task
-            .data
-            .ok_or_else(|| anyhow::anyhow!("No task available"))
-    }
-
     async fn request_proving(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
-    ) -> anyhow::Result<proving_service::ProveResponse> {
+        coordinator_task: &GetTaskResponse,
+    ) -> eyre::Result<proving_service::ProveResponse> {
         let proving_input = match self.get_proving_input(coordinator_task) {
             Ok(result) => result,
             Err(error) => {
@@ -208,7 +206,7 @@ where
                     Some(format!("failed to build proving input: error {:?}", error)),
                 )
                 .await?;
-                anyhow::bail!(
+                eyre::bail!(
                     "Failed to build proving input. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
                     coordinator_task.task_type,
                     coordinator_task.uuid,
@@ -233,7 +231,7 @@ where
                 Some(format!("failed to request proving: error {:?}", error)),
             )
             .await?;
-            anyhow::bail!(
+            eyre::bail!(
                 "Failed to request proving_service to prove. task_type: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}, err: {:?}",
                 coordinator_task.task_type,
                 coordinator_task.uuid,
@@ -248,14 +246,17 @@ where
     async fn handle_proving_progress(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
         proving_service_task_id: String,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         let prover_name = &coordinator_client.prover_name;
         let public_key = &coordinator_client.key_signer.get_public_key();
         let task_type = coordinator_task.task_type;
         let coordinator_task_uuid = &coordinator_task.uuid;
         let coordinator_task_id = &coordinator_task.task_id;
+
+        // Track last observed status to avoid spamming logs when status hasn't changed.
+        let mut last_status: Option<TaskStatus> = None;
 
         loop {
             let task = self
@@ -267,25 +268,26 @@ where
                 })
                 .await;
 
-            match task.status {
+            let current_status = task.status;
+
+            match current_status {
                 TaskStatus::Queued | TaskStatus::Proving => {
-                    info!(
-                        ?prover_name,
-                        ?task_type,
-                        ?coordinator_task_uuid,
-                        ?coordinator_task_id,
-                        ?proving_service_task_id,
-                        status = ?task.status,
-                        "Task status update"
-                    );
-                    if let Some(db) = &self.db {
-                        db.set_task(
-                            public_key.clone(),
-                            coordinator_task,
-                            proving_service_task_id.clone(),
+                    if last_status != Some(current_status) {
+                        info!(
+                            ?prover_name,
+                            ?task_type,
+                            ?coordinator_task_uuid,
+                            ?coordinator_task_id,
+                            ?proving_service_task_id,
+                            status = ?current_status,
+                            "Task status update"
                         );
                     }
-                    sleep(Duration::from_secs(WORKER_SLEEP_SEC)).await;
+                    last_status.replace(current_status);
+                    if let Some(db) = &self.db {
+                        db.set_task(public_key, coordinator_task, &proving_service_task_id);
+                    }
+                    sleep(self.poll_delay()).await;
                 }
                 TaskStatus::Success => {
                     info!(
@@ -305,7 +307,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(public_key.clone());
+                        db.delete_task(public_key);
                     }
                     break;
                 }
@@ -329,7 +331,7 @@ where
                     )
                     .await?;
                     if let Some(db) = &self.db {
-                        db.delete_task(public_key.clone());
+                        db.delete_task(public_key);
                     }
                     break;
                 }
@@ -342,73 +344,51 @@ where
     async fn submit_proof(
         &self,
         coordinator_client: &CoordinatorClient,
-        coordinator_task: &GetTaskResponseData,
+        coordinator_task: &GetTaskResponse,
         task: proving_service::QueryTaskResponse,
         status: ProofStatus,
         failure_msg: Option<String>,
-    ) -> anyhow::Result<()> {
+    ) -> eyre::Result<()> {
         let submit_proof_req = SubmitProofRequest {
             universal: true,
-            uuid: coordinator_task.uuid.clone(),
-            task_id: coordinator_task.task_id.clone(),
+            uuid: coordinator_task.uuid.as_str(),
+            task_id: coordinator_task.task_id.as_str(),
             task_type: coordinator_task.task_type,
             status,
-            proof: task.proof.unwrap_or_default(),
+            proof: task.proof.as_deref().unwrap_or(""),
             failure_type: failure_msg.as_ref().map(|_| ProofFailureType::Panic), // TODO: handle ProofFailureType::NoPanic
-            failure_msg,
+            failure_msg: failure_msg.as_deref(),
         };
 
-        let submit_proof_result = match coordinator_client.submit_proof(&submit_proof_req).await {
-            Ok(result) => result,
-            Err(e) => {
+        match coordinator_client.submit_proof(&submit_proof_req).await {
+            Ok(()) => {
                 info!(
                     prover_name = ?coordinator_client.prover_name,
                     ?coordinator_task.task_type,
                     ?coordinator_task.uuid,
                     ?coordinator_task.task_id,
                     ?task.task_id,
-                    error = ?e,
-                    "Failed to submit proof due to a http error"
+                    "Proof submitted successfully"
+                );
+            }
+            Err(e) => {
+                error!(
+                    prover_name = ?coordinator_client.prover_name,
+                    ?coordinator_task.task_type,
+                    ?coordinator_task.uuid,
+                    ?coordinator_task.task_id,
+                    ?task.task_id,
+                    error = %e,
+                    "Failed to submit proof due to coordinator error"
                 );
                 return Ok(());
             }
         };
-
-        if submit_proof_result.errcode != ErrorCode::Success {
-            info!(
-                prover_name = ?coordinator_client.prover_name,
-                ?coordinator_task.task_type,
-                ?coordinator_task.uuid,
-                ?coordinator_task.task_id,
-                ?task.task_id,
-                errcode = ?submit_proof_result.errcode,
-                errmsg = ?submit_proof_result.errmsg,
-                "Failed to submit proof due to coordinator error"
-            );
-        } else {
-            info!(
-                prover_name = ?coordinator_client.prover_name,
-                ?coordinator_task.task_type,
-                ?coordinator_task.uuid,
-                ?coordinator_task.task_id,
-                ?task.task_id,
-                "Proof submitted successfully"
-            );
-        }
         Ok(())
     }
 
-    fn build_get_task_request(&self, prover_height: Option<u64>) -> anyhow::Result<GetTaskRequest> {
-        Ok(GetTaskRequest {
-            task_types: self.proof_types.clone(),
-            prover_height,
-            universal: true,
-            task_id: None,
-        })
-    }
-
-    fn get_proving_input(&self, task: &GetTaskResponseData) -> anyhow::Result<ProveRequest> {
-        anyhow::ensure!(
+    fn get_proving_input(&self, task: &GetTaskResponse) -> eyre::Result<ProveRequest> {
+        eyre::ensure!(
             self.proof_types.contains(&task.task_type),
             "unsupported task type. self: {:?}, task: {:?}, coordinator_task_uuid: {:?}, coordinator_task_id: {:?}",
             self.proof_types,
@@ -424,55 +404,14 @@ where
             input: task.task_data.clone(),
         })
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use crate::config::Config;
-    use crate::prover::{
-        proving_service::{
-            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
-            QueryTaskResponse,
-        },
-        ProverBuilder, ProvingService,
-    };
-    use async_trait::async_trait;
-    use tokio;
-
-    struct MockProver {}
-
-    #[async_trait]
-    impl ProvingService for MockProver {
-        fn is_local(&self) -> bool {
-            true
+    fn poll_delay(&self) -> Duration {
+        let base_delay = Duration::from_secs(self.poll_interval_sec);
+        if self.randomized_delay_sec == 0 {
+            return base_delay;
         }
-        async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
-            GetVkResponse {
-                ..Default::default()
-            }
-        }
-        async fn prove(&mut self, _: ProveRequest) -> ProveResponse {
-            ProveResponse {
-                ..Default::default()
-            }
-        }
-        async fn query_task(&mut self, _: QueryTaskRequest) -> QueryTaskResponse {
-            QueryTaskResponse {
-                ..Default::default()
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_build_get_task_request() {
-        let cfg = Config::from_file("conf/config.json".to_string()).unwrap();
-        let prover_service = MockProver {};
-        let prover = ProverBuilder::new(cfg, prover_service)
-            .build()
-            .await
-            .unwrap();
-
-        let get_task_request = prover.build_get_task_request(None);
-        assert!(get_task_request.is_ok())
+        let mut rng = rand::rng();
+        let random_delay = rng.random_range(0..self.randomized_delay_sec * 1000);
+        base_delay + Duration::from_millis(random_delay)
     }
 }

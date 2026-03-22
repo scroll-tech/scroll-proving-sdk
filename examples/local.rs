@@ -1,14 +1,14 @@
-use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::Parser;
+use eyre::{Result, eyre};
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
+        ProverBuilder, ProvingService,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse,
         },
-        ProverBuilder, ProvingService,
     },
     utils::init_tracing,
 };
@@ -35,7 +35,7 @@ impl LocalProverConfig {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| eyre!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -56,25 +56,25 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
+    async fn get_vks(&self, _req: GetVkRequest) -> GetVkResponse {
         todo!()
     }
-    async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
+    async fn prove(&mut self, _req: ProveRequest) -> ProveResponse {
         todo!()
     }
-    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
+    async fn query_task(&mut self, _req: QueryTaskRequest) -> QueryTaskResponse {
         todo!()
     }
 }
 
 impl LocalProver {
-    pub fn new(cfg: LocalProverConfig) -> Self {
+    pub fn new(_cfg: LocalProverConfig) -> Self {
         Self {}
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
     init_tracing();
 
     let args = Args::parse();
