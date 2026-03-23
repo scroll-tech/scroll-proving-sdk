@@ -9,6 +9,10 @@ pub struct Db {
 
 impl Db {
     pub fn new(path: impl AsRef<Path>) -> eyre::Result<Self> {
+        tracing::info!(
+            "Apply locol storage at {}",
+            path.as_ref().to_str().unwrap_or("WRONG PATH")
+        );
         let db = DB::open_default(path)?;
         Ok(Self { db })
     }

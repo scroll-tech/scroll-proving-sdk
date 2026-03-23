@@ -155,7 +155,7 @@ where
             self.db.as_ref().and_then(|db| db.get_task(public_key))
         {
             let task_id = coordinator_task.clone().task_id;
-            debug!(task_id = %task_id, "got previous task from db");
+            info!(task_id = %task_id, "got previous task from db");
             if self.proving_service.read().await.is_local() {
                 let proving_task = self
                     .request_proving(coordinator_client, &coordinator_task)
@@ -181,10 +181,6 @@ where
             return Ok(());
         };
         info!(prover_name = %coordinator_client.prover_name, "Got task from coordinator");
-        // cache task to local, just after we have got task, with default proving task id
-        if let Some(db) = &self.db {
-            db.set_task(public_key, &coordinator_task, &coordinator_task.task_id);
-        }
         let proving_task = self
             .request_proving(coordinator_client, &coordinator_task)
             .await?;
@@ -242,15 +238,6 @@ where
             );
         }
 
-        if let Some(db) = &self.db {
-            // update the task id
-            db.set_task(
-                &coordinator_client.key_signer.get_public_key(),
-                coordinator_task,
-                &proving_task.task_id,
-            );
-        }
-
         Ok(proving_task)
     }
 
@@ -270,6 +257,7 @@ where
         let mut last_status: Option<TaskStatus> = None;
 
         if let Some(db) = &self.db {
+            info!(task_id = %proving_service_task_id, "store task to local db");
             db.set_task(public_key, coordinator_task, proving_service_task_id);
         }
 
