@@ -22,7 +22,7 @@ impl Api {
     pub fn new(cfg: CoordinatorConfig) -> eyre::Result<Self> {
         let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
-            .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+            .retry_bounds(retry_wait_duration, retry_wait_duration * 2)
             .build_with_max_retries(cfg.retry_count);
 
         let client = ClientBuilder::new(reqwest::Client::new())

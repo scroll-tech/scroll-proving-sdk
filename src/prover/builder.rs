@@ -72,8 +72,18 @@ where
                     format_cloud_prover_name(self.cfg.prover_name_prefix.clone(), i)
                 };
 
+                let mut client_cfg = self.cfg.coordinator.clone();
+                if client_cfg.retry_wait_time_sec < self.cfg.prover.poll_interval_sec {
+                    tracing::warn!(
+                        "Enforce too short retry wait time ({}) to equal to poll interval ({})",
+                        client_cfg.retry_wait_time_sec,
+                        self.cfg.prover.poll_interval_sec,
+                    );
+                    client_cfg.retry_wait_time_sec = self.cfg.prover.poll_interval_sec;
+                }
+
                 CoordinatorClient::new(
-                    self.cfg.coordinator.clone(),
+                    client_cfg,
                     self.cfg.coordinator_prover_type(),
                     self.cfg.coordinator.suppress_empty_task_error,
                     get_vk_response.vks.clone(),

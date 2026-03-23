@@ -94,9 +94,6 @@ where
             let task_str = task.to_string();
             let i = work_set.pop().expect("can not be empty");
             provers.spawn(async move {
-                // Soft start delay to stagger the provers
-                sleep(self_clone.poll_delay()).await;
-
                 let coordinator_client = &self_clone.coordinator_clients[i];
                 let prover_name = &coordinator_client.prover_name;
 
@@ -111,6 +108,9 @@ where
                 }
                 i
             });
+
+            // Soft start delay to stagger the provers
+            sleep(self.poll_delay()).await;
         }
 
         // wait until all tasks has been done
@@ -150,11 +150,9 @@ where
         coordinator_client: &CoordinatorClient,
         task_spec: Option<(ProofType, &str)>,
     ) -> eyre::Result<()> {
-        if let Some((coordinator_task, mut proving_task_id)) = self
-            .db
-            .as_ref()
-            .map(|db| db.get_task(&coordinator_client.key_signer.get_public_key()))
-            .unwrap_or_default()
+        let public_key = &coordinator_client.key_signer.get_public_key();
+        if let Some((coordinator_task, mut proving_task_id)) =
+            self.db.as_ref().and_then(|db| db.get_task(public_key))
         {
             let task_id = coordinator_task.clone().task_id;
             debug!(task_id = %task_id, "got previous task from db");
@@ -165,7 +163,7 @@ where
                 proving_task_id = proving_task.task_id
             }
             return self
-                .handle_proving_progress(coordinator_client, &coordinator_task, proving_task_id)
+                .handle_proving_progress(coordinator_client, &coordinator_task, &proving_task_id)
                 .await;
         }
 
@@ -183,10 +181,14 @@ where
             return Ok(());
         };
         info!(prover_name = %coordinator_client.prover_name, "Got task from coordinator");
+        // cache task to local, just after we have got task, with default proving task id
+        if let Some(db) = &self.db {
+            db.set_task(public_key, &coordinator_task, &coordinator_task.task_id);
+        }
         let proving_task = self
             .request_proving(coordinator_client, &coordinator_task)
             .await?;
-        self.handle_proving_progress(coordinator_client, &coordinator_task, proving_task.task_id)
+        self.handle_proving_progress(coordinator_client, &coordinator_task, &proving_task.task_id)
             .await
     }
 
@@ -240,6 +242,15 @@ where
             );
         }
 
+        if let Some(db) = &self.db {
+            // update the task id
+            db.set_task(
+                &coordinator_client.key_signer.get_public_key(),
+                coordinator_task,
+                &proving_task.task_id,
+            );
+        }
+
         Ok(proving_task)
     }
 
@@ -247,7 +258,7 @@ where
         &self,
         coordinator_client: &CoordinatorClient,
         coordinator_task: &GetTaskResponse,
-        proving_service_task_id: String,
+        proving_service_task_id: &str,
     ) -> eyre::Result<()> {
         let prover_name = &coordinator_client.prover_name;
         let public_key = &coordinator_client.key_signer.get_public_key();
@@ -258,13 +269,17 @@ where
         // Track last observed status to avoid spamming logs when status hasn't changed.
         let mut last_status: Option<TaskStatus> = None;
 
+        if let Some(db) = &self.db {
+            db.set_task(public_key, coordinator_task, proving_service_task_id);
+        }
+
         loop {
             let task = self
                 .proving_service
                 .write()
                 .await
                 .query_task(QueryTaskRequest {
-                    task_id: proving_service_task_id.clone(),
+                    task_id: proving_service_task_id.to_string(),
                 })
                 .await;
 
@@ -284,9 +299,6 @@ where
                         );
                     }
                     last_status.replace(current_status);
-                    if let Some(db) = &self.db {
-                        db.set_task(public_key, coordinator_task, &proving_service_task_id);
-                    }
                     sleep(self.poll_delay()).await;
                 }
                 TaskStatus::Success => {
@@ -298,6 +310,9 @@ where
                         ?proving_service_task_id,
                         "Task proved successfully"
                     );
+                    if let Some(db) = &self.db {
+                        db.delete_task(public_key);
+                    }
                     self.submit_proof(
                         coordinator_client,
                         coordinator_task,
@@ -306,9 +321,6 @@ where
                         None,
                     )
                     .await?;
-                    if let Some(db) = &self.db {
-                        db.delete_task(public_key);
-                    }
                     break;
                 }
                 TaskStatus::Failed => {
@@ -322,6 +334,9 @@ where
                         ?task_err,
                         "Task failed"
                     );
+                    if let Some(db) = &self.db {
+                        db.delete_task(public_key);
+                    }
                     self.submit_proof(
                         coordinator_client,
                         coordinator_task,
@@ -330,9 +345,6 @@ where
                         Some(task_err),
                     )
                     .await?;
-                    if let Some(db) = &self.db {
-                        db.delete_task(public_key);
-                    }
                     break;
                 }
             }
