@@ -8,7 +8,7 @@ use eyre::Context;
 use http::{Method, StatusCode};
 use reqwest::{Url, header::CONTENT_TYPE};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
+use reqwest_retry::{Jitter, RetryTransientMiddleware, policies::ExponentialBackoff};
 use serde::{Deserialize, Serialize};
 use tracing::Level;
 
@@ -22,7 +22,8 @@ impl Api {
     pub fn new(cfg: CoordinatorConfig) -> eyre::Result<Self> {
         let retry_wait_duration = Duration::from_secs(cfg.retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
-            .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+            .retry_bounds(retry_wait_duration, retry_wait_duration * 2)
+            .jitter(Jitter::None)
             .build_with_max_retries(cfg.retry_count);
 
         let client = ClientBuilder::new(reqwest::Client::new())

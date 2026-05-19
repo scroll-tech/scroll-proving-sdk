@@ -288,9 +288,9 @@ mod tests {
         let prover_types = vec![ProverType::Chunk];
         let vks = vec!["mock_vk".to_string()];
         let login_message = LoginMessage {
-            challenge: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik".into(),
-            prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c".into(),
-            prover_name: "test".into(),
+            challenge: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik",
+            prover_version: "v4.4.45-37af5ef5-38a68e2-1c5093c",
+            prover_name: "test",
             prover_provider_type: ProverProviderType::Internal,
             prover_types: ProverTypes(&prover_types),
             vks: &vks,
